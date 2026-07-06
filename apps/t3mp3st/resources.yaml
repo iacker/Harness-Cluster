@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: t3mp3st
+  labels:
+    purpose: offensive-security-lab
+    pod-security.kubernetes.io/enforce: baseline
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t3mp3st-config
+  namespace: t3mp3st
+data:
+  T3MP3ST_HOST: "0.0.0.0"
+  T3MP3ST_PORT: "3333"
+  LLM_PROVIDER: "openrouter"
+  # NB: l'app ne lit PAS LLM_MODEL (vestige) — le modèle est patché en dur
+  # dans src/config/index.ts par l'initContainer (sed ci-dessous).
+  LLM_MODEL: "deepseek/deepseek-v4-pro"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: t3mp3st
+  namespace: t3mp3st
+  labels:
+    app: t3mp3st
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: t3mp3st
+  template:
+    metadata:
+      labels:
+        app: t3mp3st
+    spec:
+      initContainers:
+        - name: fetch-and-install
+          image: node:20
+          workingDir: /app
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -e
+              echo "[init] clone T3MP3ST…"
+              git clone --depth 1 https://github.com/elder-plinius/T3MP3ST /app
+              echo "[init] npm ci…"
+              npm ci --no-audit --no-fund
+              echo "[init] patch modèle par défaut -> deepseek/deepseek-v4-pro"
+              sed -i "s#defaultModel: 'anthropic/claude-opus-4.8'#defaultModel: 'deepseek/deepseek-v4-pro'#g" /app/src/config/index.ts
+              grep -n "defaultModel: 'deepseek/deepseek-v4-pro'" /app/src/config/index.ts || { echo "PATCH ECHOUE"; exit 1; }
+              echo "[init] terminé."
+          volumeMounts:
+            - name: app
+              mountPath: /app
+          resources:
+            requests: {cpu: "250m", memory: "256Mi"}
+            limits: {cpu: "1", memory: "1Gi"}
+      containers:
+        - name: t3mp3st
+          image: node:20
+          workingDir: /app
+          command: ["npm", "run", "server"]
+          ports:
+            - containerPort: 3333
+              name: warroom
+          envFrom:
+            - configMapRef: {name: t3mp3st-config}
+            - secretRef: {name: t3mp3st-secrets}   # créé hors Git (kubectl)
+          volumeMounts:
+            - name: app
+              mountPath: /app
+          readinessProbe:
+            tcpSocket: {port: 3333}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 18
+          resources:
+            requests: {cpu: "100m", memory: "256Mi"}
+            limits: {cpu: "1", memory: "1Gi"}
+      volumes:
+        - name: app
+          emptyDir:
+            sizeLimit: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: t3mp3st
+  namespace: t3mp3st
+spec:
+  selector:
+    app: t3mp3st
+  ports:
+    - port: 3333
+      targetPort: 3333
+      name: warroom
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: t3mp3st-isolation
+  namespace: t3mp3st
+spec:
+  podSelector:
+    matchLabels:
+      app: t3mp3st
+  policyTypes: [Ingress, Egress]
+  ingress: []       # deny-all ingress (accès via kubectl port-forward)
+  egress:
+    - {}            # egress ouvert (OpenRouter + cibles autorisées)
