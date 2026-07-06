@@ -40,37 +40,44 @@ spec:
       containers:
         - name: hermes
           image: nousresearch/hermes-agent:v2026.7.1
-          # On garde l'ENTRYPOINT /init (s6) de l'image et on route un wrapper
-          # via CMD (args). main-wrapper.sh: "first arg is an executable -> exec it".
-          args:
-            - "sh"
-            - "-c"
-            - |
-              if [ -f "$HERMES_HOME/.configured" ]; then
-                echo "[hermes] config présente -> démarrage agent"
-                exec hermes
-              else
-                echo "[hermes] AUCUNE config. Setup UNE fois :"
-                echo "  kubectl -n hermes exec -it deploy/hermes -- hermes setup"
-                echo "  puis: kubectl -n hermes exec deploy/hermes -- touch \$HERMES_HOME/.configured"
-                echo "  puis: kubectl -n hermes rollout restart deploy/hermes"
-                exec sleep infinity
-              fi
+          # ENTRYPOINT /init (s6) conservé ; le CMD (args) EST le programme
+          # principal (cf. commentaire du service s6 main-hermes). "serve" =
+          # backend headless JSON-RPC/WebSocket, reste actif -> container stable.
+          # host loopback par défaut (127.0.0.1) -> accès via port-forward.
+          # --skip-build : sert le dist pré-buildé de l'image (évite npm build).
+          args: ["serve", "--skip-build"]
           env:
             - name: HERMES_HOME
               value: /opt/data
           envFrom:
             - secretRef: {name: hermes-secrets}   # OPENROUTER_API_KEY, hors Git
+          ports:
+            - containerPort: 9119
+              name: gateway
           volumeMounts:
             - name: data
               mountPath: /opt/data
           resources:
-            requests: {cpu: "100m", memory: "256Mi"}
+            requests: {cpu: "100m", memory: "384Mi"}
             limits: {cpu: "1", memory: "1Gi"}
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: hermes-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hermes
+  namespace: hermes
+spec:
+  selector:
+    app: hermes
+  ports:
+    - port: 9119
+      targetPort: 9119
+      name: gateway
+  type: ClusterIP
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
