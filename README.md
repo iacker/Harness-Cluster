@@ -1,12 +1,13 @@
 # Harness-Cluster
 
-GitOps pour un lab k3s 2 nœuds (Tailscale), piloté par **Flux CD**. Héberge des
-harnesses agentic / offensive-security.
+L'idée du lab : faire tourner des harnesses agentic / offensive-security en
+continu sur du vieux hardware recyclé, le tout géré en GitOps plutôt qu'à la
+main. GitOps pour un lab k3s 2 nœuds (Tailscale), piloté par **Flux CD**.
 
 ## Cluster
 
-- **node1** — k3s server / control-plane (Tailscale `100.122.146.39`)
-- **node2** — k3s agent (Tailscale `100.83.189.79`)
+- **node1** — k3s server / control-plane (Tailscale `100.x.y.1`)
+- **node2** — k3s agent (Tailscale `100.x.y.2`)
 - 2× mini-PC Celeron G3900T, 2 vCPU / 4 Go chacun. Réseau cluster sur Tailscale.
 
 ## Structure
