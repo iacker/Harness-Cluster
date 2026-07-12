@@ -48,11 +48,11 @@ spec:
       log:
         level: info          # defaut 'debug' trop verbeux
         format: text
-      # mapping des pods/containers K8s — DESACTIVE par defaut, indispensable ici
-      kube:
-        enabled: true
-        podInformer:
-          mode: kubelet
+      # NB: ne PAS mettre kube.enabled=true ici. Le chart 0.11.4 valide le
+      # fichier de config AVANT d'appliquer le flag CLI --kube.node-name=$(NODE_NAME),
+      # donc kube.enabled=true dans le ConfigMap avec nodeName vide fait crash
+      # (kube.node-name not supplied). Le DaemonSet active deja le mapping K8s
+      # via l'argument CLI + downward API NODE_NAME. On laisse le defaut.
       exporter:
         prometheus:
           enabled: true
