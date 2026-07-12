@@ -1,0 +1,15 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: kepler
+  namespace: flux-system
+spec:
+  interval: 10m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/kepler
+  prune: true
+  # isole de la Kustomization 'apps' : pas de wait bloquant sur les harnesses
+  wait: false
+  timeout: 5m
