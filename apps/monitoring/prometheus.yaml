@@ -1,0 +1,85 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    purpose: energy-observability
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: prometheus-community
+  namespace: monitoring
+spec:
+  type: default
+  interval: 24h
+  url: https://prometheus-community.github.io/helm-charts
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  type: default
+  interval: 24h
+  url: https://grafana.github.io/helm-charts
+---
+# Prometheus minimal : server seul, scrape uniquement Kepler.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  interval: 30m
+  timeout: 8m
+  chart:
+    spec:
+      chart: prometheus
+      version: "29.17.0"
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+        namespace: monitoring
+  install:
+    createNamespace: false
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # --- couper tout ce qui est inutile pour un seul endpoint ---
+    alertmanager:
+      enabled: false
+    kube-state-metrics:
+      enabled: false
+    prometheus-node-exporter:
+      enabled: false
+    prometheus-pushgateway:
+      enabled: false
+    server:
+      retention: "7d"
+      persistentVolume:
+        enabled: true
+        size: 2Gi
+        storageClass: local-path
+      resources:
+        requests:
+          cpu: 50m
+          memory: 200Mi
+        limits:
+          cpu: 500m
+          memory: 400Mi
+      # pas de scrape du cluster entier : on cible Kepler seulement
+      global:
+        scrape_interval: 30s
+    # scrape statique de l'endpoint Kepler (svc kepler.kepler:28282)
+    extraScrapeConfigs: |
+      - job_name: kepler
+        static_configs:
+          - targets:
+              - kepler.kepler.svc.cluster.local:28282
+        metrics_path: /metrics

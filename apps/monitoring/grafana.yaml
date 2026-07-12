@@ -1,0 +1,70 @@
+---
+# Grafana standalone léger : datasource Prometheus + dashboard Kepler provisionnés.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  interval: 30m
+  timeout: 8m
+  chart:
+    spec:
+      chart: grafana
+      version: "10.5.15"
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: monitoring
+  install:
+    createNamespace: false
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 25m
+        memory: 96Mi
+      limits:
+        cpu: 250m
+        memory: 192Mi
+    persistence:
+      enabled: false          # dashboards provisionnés depuis Git, pas besoin de PVC
+    # admin/admin par défaut — lab jetable, accès via port-forward uniquement
+    adminUser: admin
+    adminPassword: admin
+    service:
+      type: ClusterIP
+      port: 80
+    # datasource Prometheus auto
+    datasources:
+      datasources.yaml:
+        apiVersion: 1
+        datasources:
+          - name: Prometheus
+            type: prometheus
+            access: proxy
+            url: http://prometheus-server.monitoring.svc.cluster.local
+            isDefault: true
+    # provider de dashboards depuis un ConfigMap (label grafana_dashboard)
+    dashboardProviders:
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+          - name: default
+            orgId: 1
+            folder: ""
+            type: file
+            disableDeletion: false
+            editable: true
+            options:
+              path: /var/lib/grafana/dashboards/default
+    dashboardsConfigMaps:
+      default: grafana-dashboard-kepler
+    sidecar:
+      dashboards:
+        enabled: false        # on monte via dashboardsConfigMaps explicitement
