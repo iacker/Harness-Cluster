@@ -1,60 +1,76 @@
-# Harness-Cluster
+<p align="center">
+  <img src="docs/logo.png" alt="Harness-Cluster" width="220">
+</p>
 
-L'idée du lab : faire tourner des harnesses agentic / offensive-security en
-continu sur du vieux hardware recyclé, le tout géré en GitOps plutôt qu'à la
-main. GitOps pour un lab k3s 2 nœuds (Tailscale), piloté par **Flux CD**.
+<h1 align="center">Harness-Cluster</h1>
 
-## Cluster
+<p align="center">
+  Un petit lab qui fait tourner des harnesses d'agents IA en continu, sur du vieux hardware recyclé, géré en GitOps avec Flux CD.
+</p>
 
-- **node1** — k3s server / control-plane (Tailscale `100.x.y.1`)
-- **node2** — k3s agent (Tailscale `100.x.y.2`)
-- 2× mini-PC Celeron G3900T, 2 vCPU / 4 Go chacun. Réseau cluster sur Tailscale.
+## L'idée
 
-## Structure
+Plutôt que de lancer mes agents à la main, je les fais vivre 24/7 sur un cluster k3s de 2 mini-PC, et tout est décrit dans ce repo. Flux se charge de synchroniser le cluster avec le Git. Je pousse, ça se déploie.
+
+## Le cluster
+
+- **node1**, k3s server / control-plane (Tailscale `100.x.y.1`)
+- **node2**, k3s agent (Tailscale `100.x.y.2`)
+- 2 mini-PC Celeron G3900T, 2 vCPU et 4 Go chacun. Réseau cluster sur Tailscale.
+
+## Ce qui tourne dessus
 
 ```
 clusters/k3s-lab/
-  flux-system/     # composants Flux (généré par `flux bootstrap`)
-  apps.yaml        # Flux Kustomization -> ./apps
+  flux-system/     composants Flux (générés par flux bootstrap)
+  apps.yaml        Flux Kustomization vers ./apps
+  kepler.yaml      Flux Kustomization vers ./apps/kepler
+  monitoring.yaml  Flux Kustomization vers ./apps/monitoring
 apps/
   kustomization.yaml
-  t3mp3st/         # War Room offensive-security (Node.js)  — web :3333
-  mercury-agent/   # agent 24/7 (TS, web UI + SQLite)       — web :6174
-  hermes-agent/    # self-improving agent (Python, serve)   — web :9119
+  t3mp3st/         war room offensive-security (Node.js), web sur 3333
+  hermes-agent/    agent self-improving généraliste (Python), web sur 9119
+  kepler/          mesure de conso énergie par pod
+  monitoring/      Grafana et Prometheus
 ```
 
-Tous les harnesses routent le LLM via OpenRouter → `deepseek/deepseek-v4-pro`.
+Les harnesses routent le LLM via OpenRouter vers `deepseek/deepseek-v4-pro`.
 
-## Secrets (hors Git — ce repo est public)
+## Les secrets restent hors du Git
 
-Les clés API ne sont **jamais** commitées. Créées à la main :
+Ce repo est public, donc aucune clé API n'est commitée. On les crée à la main.
 
 ```bash
-# clé OpenRouter partagée par les harnesses (même clé pour les 3)
-kubectl create secret generic t3mp3st-secrets -n t3mp3st --from-literal=OPENROUTER_API_KEY=sk-or-...
-kubectl create secret generic mercury-secrets -n mercury --from-literal=OPENAI_COMPAT_API_KEY=sk-or-...
-kubectl create secret generic hermes-secrets  -n hermes  --from-literal=OPENROUTER_API_KEY=sk-or-...
+kubectl create secret generic t3mp3st-secrets -n t3mp3st \
+  --from-literal=OPENROUTER_API_KEY=sk-or-...
+kubectl create secret generic hermes-secrets  -n hermes  \
+  --from-literal=OPENROUTER_API_KEY=sk-or-...
 ```
 
-## Accès aux UIs
+## Accéder aux interfaces
 
-Via `kubectl port-forward` uniquement (NetworkPolicy ingress deny-all).
-T3MP3ST bind `0.0.0.0` (→ `svc`) ; mercury et hermes bindent `127.0.0.1` (→ `deploy`) :
+Tout passe par `kubectl port-forward`, l'ingress est en deny-all via NetworkPolicy.
 
 ```bash
 kubectl -n t3mp3st port-forward svc/t3mp3st    3333:3333   # http://127.0.0.1:3333/ui/
-kubectl -n mercury port-forward deploy/mercury 6174:6174   # http://127.0.0.1:6174
 kubectl -n hermes  port-forward deploy/hermes  9119:9119   # http://127.0.0.1:9119
 ```
 
-## Setup config-once (déjà fait)
+## Mettre en route depuis zéro
 
-- **mercury** : `kubectl -n mercury exec -it deploy/mercury -- mercury setup` (provider *OpenAI Compilations* → OpenRouter), puis `rollout restart`.
-- **hermes** : config non-interactive — clé lue de l'env, `hermes config set model.default deepseek/deepseek-v4-pro`. Config persistée sur PVC `/opt/data`.
-
-## Opérations Flux
+Il faut déjà un cluster k3s et le CLI Flux.
 
 ```bash
-flux get kustomizations          # état de la synchro
-flux reconcile kustomization apps --with-source   # forcer une synchro
+flux bootstrap github \
+  --owner=iacker --repository=Harness-Cluster \
+  --branch=main --path=clusters/k3s-lab
+```
+
+Ensuite on crée les secrets ci-dessus, et Flux déploie le reste tout seul.
+
+## Opérations Flux au quotidien
+
+```bash
+flux get kustomizations                            # état de la synchro
+flux reconcile kustomization apps --with-source    # forcer une synchro
 ```
