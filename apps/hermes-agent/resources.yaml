@@ -39,7 +39,7 @@ spec:
     spec:
       containers:
         - name: hermes
-          image: nousresearch/hermes-agent:v2026.7.1
+          image: nousresearch/hermes-agent:v2026.8.3
           # ENTRYPOINT /init (s6) conservé ; le CMD (args) EST le programme
           # principal (cf. commentaire du service s6 main-hermes). "serve" =
           # backend headless JSON-RPC/WebSocket, reste actif -> container stable.
