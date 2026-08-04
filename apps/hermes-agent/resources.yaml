@@ -46,15 +46,18 @@ spec:
           # host loopback par défaut (127.0.0.1) -> accès via port-forward.
           # --skip-build : sert le dist pré-buildé de l'image (évite npm build).
           # gateway run : lance le gateway complet (backend + plateformes).
-          # Requis pour A2A (plateforme adapter chargee seulement par le gateway,
-          # pas par "serve"). A2A bind 127.0.0.1:9900 dans le pod (localhost-only,
-          # pas de token) -> acces via kubectl port-forward, rien d'expose.
+          # Requis pour A2A (plateforme adapter chargee seulement par le gateway).
+          # A2A expose sur 0.0.0.0:9900 avec token (A2A_BEARER_TOKEN, hors Git via
+          # secret) -> joignable en Tailscale (node1 100.122.146.39) via NodePort.
+          # Sans token il resterait localhost-only ; le token autorise le bind large.
           args: ["gateway", "run"]
           env:
             - name: HERMES_HOME
               value: /opt/data
+            - name: A2A_HOST
+              value: "0.0.0.0"
           envFrom:
-            - secretRef: {name: hermes-secrets}   # OPENROUTER_API_KEY, hors Git
+            - secretRef: {name: hermes-secrets}   # OPENROUTER_API_KEY + A2A_BEARER_TOKEN, hors Git
           ports:
             - containerPort: 9119
               name: gateway
@@ -85,6 +88,24 @@ spec:
       name: gateway
   type: ClusterIP
 ---
+# Service A2A: expose le port 9900 du pod en NodePort fixe 30900.
+# Le node k3s (node1) porte l'IP Tailscale 100.122.146.39, donc A2A devient
+# joignable depuis la mesh sur http://100.122.146.39:30900 (token requis).
+apiVersion: v1
+kind: Service
+metadata:
+  name: hermes-a2a
+  namespace: hermes
+spec:
+  selector:
+    app: hermes
+  ports:
+    - port: 9900
+      targetPort: 9900
+      nodePort: 30900
+      name: a2a
+  type: NodePort
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -95,6 +116,8 @@ spec:
     matchLabels:
       app: hermes
   policyTypes: [Ingress, Egress]
-  ingress: []
+  ingress:
+    - ports:
+        - {protocol: TCP, port: 9900}   # A2A entrant (mesh Tailscale, token requis)
   egress:
     - {}            # egress ouvert (OpenRouter, Telegram, outils)
