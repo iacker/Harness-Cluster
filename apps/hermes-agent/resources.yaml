@@ -45,7 +45,11 @@ spec:
           # backend headless JSON-RPC/WebSocket, reste actif -> container stable.
           # host loopback par défaut (127.0.0.1) -> accès via port-forward.
           # --skip-build : sert le dist pré-buildé de l'image (évite npm build).
-          args: ["serve", "--skip-build"]
+          # gateway run : lance le gateway complet (backend + plateformes).
+          # Requis pour A2A (plateforme adapter chargee seulement par le gateway,
+          # pas par "serve"). A2A bind 127.0.0.1:9900 dans le pod (localhost-only,
+          # pas de token) -> acces via kubectl port-forward, rien d'expose.
+          args: ["gateway", "run"]
           env:
             - name: HERMES_HOME
               value: /opt/data
@@ -54,6 +58,8 @@ spec:
           ports:
             - containerPort: 9119
               name: gateway
+            - containerPort: 9900
+              name: a2a
           volumeMounts:
             - name: data
               mountPath: /opt/data
