@@ -1,0 +1,65 @@
+---
+# Plans d'upgrade k3s via system-upgrade-controller (Rancher).
+# Ordre impose: le plan SERVER (control-plane) s'execute AVANT le plan AGENT.
+# Un seul noeud a la fois (concurrency: 1), cordon+drain automatique.
+# Cible: k3s v1.36.3+k3s1.
+#
+# Le SUC lit le canal ou la version explicite. On epingle la version exacte
+# pour un upgrade deterministe et reproductible en GitOps.
+apiVersion: upgrade.cattle.io/v1
+kind: Plan
+metadata:
+  name: k3s-server
+  namespace: system-upgrade
+  labels:
+    k3s-upgrade: server
+spec:
+  concurrency: 1
+  version: v1.36.3+k3s1
+  cordon: true
+  nodeSelector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: In
+        values: ["true"]
+  serviceAccountName: system-upgrade
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+    - key: node-role.kubernetes.io/master
+      operator: Exists
+      effect: NoSchedule
+    - key: CriticalAddonsOnly
+      operator: Exists
+  upgrade:
+    image: rancher/k3s-upgrade
+---
+apiVersion: upgrade.cattle.io/v1
+kind: Plan
+metadata:
+  name: k3s-agent
+  namespace: system-upgrade
+  labels:
+    k3s-upgrade: agent
+spec:
+  concurrency: 1
+  version: v1.36.3+k3s1
+  cordon: true
+  # les agents attendent que les serveurs soient a jour
+  prepare:
+    args:
+      - prepare
+      - k3s-server
+    image: rancher/k3s-upgrade
+  nodeSelector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: NotIn
+        values: ["true"]
+  serviceAccountName: system-upgrade
+  drain:
+    force: true
+    skipWaitForDeleteTimeout: 60
+  upgrade:
+    image: rancher/k3s-upgrade

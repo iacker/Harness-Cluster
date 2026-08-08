@@ -1,0 +1,18 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: system-upgrade
+  namespace: flux-system
+spec:
+  interval: 10m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/system-upgrade
+  prune: true
+  # ISOLE: l'upgrade k3s cordon/drain/reboot les noeuds. Un wait:true bloquerait
+  # la reconciliation pendant que le control-plane redemarre. On ne prune PAS
+  # les Plans a la legere (ils sont declaratifs, le SUC ne re-upgrade pas un
+  # noeud deja a la version cible).
+  wait: false
+  timeout: 10m
