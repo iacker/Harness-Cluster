@@ -5,6 +5,7 @@ metadata:
   name: monitoring
   labels:
     purpose: energy-observability
+    pod-security.kubernetes.io/enforce: baseline
 ---
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository

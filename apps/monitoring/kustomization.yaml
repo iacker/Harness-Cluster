@@ -4,3 +4,4 @@ resources:
   - prometheus.yaml
   - dashboard-configmap.yaml
   - grafana.yaml
+  - networkpolicy.yaml

@@ -1,0 +1,23 @@
+---
+# Isolation reseau du namespace monitoring.
+# - Ingress: seulement depuis le namespace monitoring lui-meme (grafana<->prometheus).
+#   Les sondes kubelet et le port-forward passent par le noeud (host) et ne sont
+#   pas bloques par une policy a base de podSelector.
+# - Egress: ouvert (prometheus doit scraper kepler.kepler:28282 + resoudre le DNS).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: monitoring-isolation
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+  egress:
+    - {}
