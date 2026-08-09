@@ -1,0 +1,38 @@
+---
+# ClusterIssuer auto-signe : racine de confiance du lab (pas de domaine public,
+# cluster Tailscale-only). Genere une CA interne, puis un CA-Issuer qui signe
+# les certs des Ingress. Pattern standard pour homelab/PKI interne.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned
+spec:
+  selfSigned: {}
+---
+# Certificat racine CA (auto-signe par le ClusterIssuer ci-dessus)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: lab-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: k3s-lab-ca
+  secretName: lab-ca-secret
+  duration: 87600h        # 10 ans
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+# CA-Issuer : signe les certs applicatifs a partir de la CA du lab
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: lab-ca-issuer
+spec:
+  ca:
+    secretName: lab-ca-secret

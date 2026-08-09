@@ -1,0 +1,17 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cert-manager-issuers
+  namespace: flux-system
+spec:
+  interval: 10m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/cert-manager-issuers
+  prune: true
+  # depend du controller cert-manager (CRDs + webhook prets)
+  dependsOn:
+    - name: cert-manager
+  wait: false
+  timeout: 5m
