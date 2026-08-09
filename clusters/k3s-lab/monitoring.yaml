@@ -13,3 +13,7 @@ spec:
   # isole des harnesses : un souci Prom/Grafana ne bloque pas 'apps'
   wait: false
   timeout: 8m
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
