@@ -1,0 +1,28 @@
+---
+# Le ClusterRole du chart prometheus n'inclut pas nodes/proxy, requis pour
+# scraper le cAdvisor du kubelet via l'API proxy (sinon 403 Forbidden).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-nodes-proxy
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes/proxy
+      - nodes/metrics
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/metrics", "/metrics/cadvisor"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-nodes-proxy
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-nodes-proxy
+subjects:
+  - kind: ServiceAccount
+    name: prometheus-server
+    namespace: monitoring

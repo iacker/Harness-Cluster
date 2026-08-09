@@ -5,3 +5,4 @@ resources:
   - dashboard-configmap.yaml
   - grafana.yaml
   - networkpolicy.yaml
+  - rbac-nodes-proxy.yaml
