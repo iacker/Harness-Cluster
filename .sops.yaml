@@ -1,0 +1,7 @@
+# Regles de chiffrement SOPS pour le repo GitOps.
+# On chiffre uniquement les champs data/stringData des Secrets k8s (pas les
+# metadata/apiVersion, pour que Flux/kustomize puissent toujours lire la structure).
+creation_rules:
+  - path_regex: .*\.sops\.ya?ml$
+    encrypted_regex: "^(data|stringData)$"
+    age: age1czdh5vwj9kk5rcmcxj99gj7v20kq7ktj8nlnkjt7sr900r2yguas5kdwpx

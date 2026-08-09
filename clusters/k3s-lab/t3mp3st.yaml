@@ -14,3 +14,7 @@ spec:
   # fragile (undici/Node). Un crashloop ici ne doit PAS bloquer les autres apps.
   wait: false
   timeout: 5m
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
