@@ -1,0 +1,90 @@
+---
+# Backup du datastore k3s. Ce cluster utilise SQLite (state.db), pas etcd
+# embarque -> pas de etcd-snapshot possible. On sauvegarde donc le fichier
+# state.db (tout l'etat du cluster) via un CronJob qui tourne SUR node1
+# (control-plane, ou vit le fichier) avec un hostPath en lecture.
+#
+# Restauration : arreter k3s sur node1, remplacer
+# /var/lib/rancher/k3s/server/db/state.db par une copie, redemarrer.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backup
+  labels:
+    purpose: disaster-recovery
+    # hostPath sur le rootfs du control-plane
+    pod-security.kubernetes.io/enforce: privileged
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: k3s-backups
+  namespace: backup
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: k3s-db-backup
+  namespace: backup
+spec:
+  schedule: "0 */12 * * *"     # toutes les 12h
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  startingDeadlineSeconds: 120
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 600
+      template:
+        spec:
+          # DOIT tourner sur le control-plane ou vit state.db
+          nodeName: node1
+          restartPolicy: OnFailure
+          tolerations:
+            - operator: Exists
+          containers:
+            - name: backup
+              image: alpine:3.20
+              securityContext:
+                privileged: true
+              command:
+                - sh
+                - -c
+                - |
+                  set -e
+                  TS=$(date +%Y%m%d-%H%M%S)
+                  SRC=/host-db/state.db
+                  DEST=/backups/state-${TS}.db
+                  if [ ! -f "$SRC" ]; then echo "SOURCE ABSENTE: $SRC"; exit 1; fi
+                  # copie coherente via l'API de sauvegarde sqlite (evite un fichier a chaud corrompu)
+                  apk add --no-cache sqlite >/dev/null 2>&1 || true
+                  if command -v sqlite3 >/dev/null 2>&1; then
+                    sqlite3 "$SRC" ".backup '$DEST'"
+                  else
+                    cp "$SRC" "$DEST"
+                  fi
+                  gzip -f "$DEST"
+                  echo "BACKUP OK: ${DEST}.gz ($(du -h ${DEST}.gz | cut -f1))"
+                  # retention : garder les 10 plus recents
+                  ls -1t /backups/state-*.db.gz 2>/dev/null | tail -n +11 | xargs -r rm -f
+                  echo "Backups presents:"; ls -1t /backups/state-*.db.gz 2>/dev/null | head
+              volumeMounts:
+                - name: host-db
+                  mountPath: /host-db
+                  readOnly: true
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: host-db
+              hostPath:
+                path: /var/lib/rancher/k3s/server/db
+                type: Directory
+            - name: backups
+              persistentVolumeClaim:
+                claimName: k3s-backups
