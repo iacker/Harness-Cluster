@@ -43,8 +43,17 @@ spec:
       activeDeadlineSeconds: 600
       template:
         spec:
-          # DOIT tourner sur le control-plane ou vit state.db
-          nodeName: node1
+          # DOIT tourner sur le control-plane ou vit state.db.
+          # nodeAffinity (pas nodeName) pour que le scheduler declenche le
+          # binding du PVC local-path (WaitForFirstConsumer).
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: kubernetes.io/hostname
+                        operator: In
+                        values: ["node1"]
           restartPolicy: OnFailure
           tolerations:
             - operator: Exists
