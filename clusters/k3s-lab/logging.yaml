@@ -1,0 +1,16 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: logging
+  namespace: flux-system
+spec:
+  interval: 10m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/logging
+  prune: true
+  # ISOLE : la stack logs ne doit pas bloquer les autres apps si Loki galere
+  # a demarrer (schema/storage). wait:false comme kepler/monitoring.
+  wait: false
+  timeout: 10m
