@@ -53,6 +53,11 @@ spec:
             uid: PDE6745920139CE56
             url: http://prometheus-server.monitoring.svc.cluster.local
             isDefault: true
+          - name: Loki
+            type: loki
+            access: proxy
+            uid: loki
+            url: http://loki.logging.svc.cluster.local:3100
     # provider de dashboards depuis un ConfigMap (label grafana_dashboard)
     dashboardProviders:
       dashboardproviders.yaml:
