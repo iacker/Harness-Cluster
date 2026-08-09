@@ -19,5 +19,13 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: monitoring
+    # autoriser Traefik (kube-system) a joindre Grafana pour l'Ingress TLS
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 3000
   egress:
     - {}

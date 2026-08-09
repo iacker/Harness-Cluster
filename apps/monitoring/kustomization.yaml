@@ -6,3 +6,4 @@ resources:
   - grafana.yaml
   - networkpolicy.yaml
   - rbac-nodes-proxy.yaml
+  - ingress.yaml

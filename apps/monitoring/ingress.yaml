@@ -1,0 +1,43 @@
+---
+# Certificat TLS pour Grafana, signe par la CA interne du lab (lab-ca-issuer).
+# Hostname: grafana.k3s-lab.local (a resoudre via /etc/hosts ou DNS local vers
+# l'IP Tailscale d'un noeud, ex 100.122.146.39).
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: grafana-tls
+  namespace: monitoring
+spec:
+  secretName: grafana-tls
+  duration: 8760h          # 1 an
+  dnsNames:
+    - grafana.k3s-lab.local
+  issuerRef:
+    name: lab-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana
+  namespace: monitoring
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - grafana.k3s-lab.local
+      secretName: grafana-tls
+  rules:
+    - host: grafana.k3s-lab.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 80
