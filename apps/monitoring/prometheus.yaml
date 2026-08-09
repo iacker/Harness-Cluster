@@ -7,6 +7,15 @@ metadata:
     purpose: energy-observability
     pod-security.kubernetes.io/enforce: baseline
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring-system
+  labels:
+    purpose: node-observability
+    # node-exporter necessite hostNetwork/hostPID/hostPath
+    pod-security.kubernetes.io/enforce: privileged
+---
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
@@ -52,13 +61,19 @@ spec:
     remediation:
       retries: 3
   values:
-    # --- couper tout ce qui est inutile pour un seul endpoint ---
+    # --- observabilite cluster complete : KSM + node-exporter actives ---
     alertmanager:
-      enabled: false
+      enabled: false          # active des qu'un webhook Discord/Telegram est fourni
     kube-state-metrics:
-      enabled: false
+      enabled: true           # etat des objets K8s (pods, deploy, ds...)
     prometheus-node-exporter:
-      enabled: false
+      enabled: true           # metriques hote (cpu/ram/disk/net par noeud)
+      # node-exporter a besoin de hostNetwork/hostPID/hostPath -> incompatible
+      # PSS baseline du ns monitoring. On le deporte dans un ns dedie privileged.
+      namespaceOverride: monitoring-system
+      resources:
+        requests: {cpu: 20m, memory: 32Mi}
+        limits: {cpu: 100m, memory: 64Mi}
     prometheus-pushgateway:
       enabled: false
     server:
@@ -74,7 +89,6 @@ spec:
         limits:
           cpu: "1"
           memory: 1536Mi
-      # pas de scrape du cluster entier : on cible Kepler seulement
       global:
         scrape_interval: 30s
     # scrape statique de l'endpoint Kepler (svc kepler.kepler:28282)
@@ -84,3 +98,20 @@ spec:
           - targets:
               - kepler.kepler.svc.cluster.local:28282
         metrics_path: /metrics
+      # kubelet cAdvisor (metriques conteneurs/pods par noeud)
+      - job_name: kubelet-cadvisor
+        scheme: https
+        tls_config:
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
