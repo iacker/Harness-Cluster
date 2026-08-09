@@ -61,6 +61,17 @@ spec:
           enabled: false     # pas de GPU sur les Celeron
     daemonset:
       hostPID: true
+      # liveness par defaut = timeoutSeconds:1 -> trop court : sur node1
+      # (control-plane charge) /metrics peut prendre >1s (collecte ~1.2s),
+      # d'ou 3 echecs -> kill -> crashloop. On elargit le timeout + tolerance.
+      livenessProbe:
+        httpGet:
+          path: /metrics
+          port: http
+        initialDelaySeconds: 15
+        periodSeconds: 60
+        timeoutSeconds: 10
+        failureThreshold: 5
       securityContext:
         privileged: true
         runAsNonRoot: false
