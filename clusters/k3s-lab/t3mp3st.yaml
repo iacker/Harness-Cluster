@@ -1,0 +1,16 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: t3mp3st
+  namespace: flux-system
+spec:
+  interval: 10m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/t3mp3st
+  prune: true
+  # ISOLE de 'apps' : t3mp3st clone un repo upstream + npm ci au boot, donc
+  # fragile (undici/Node). Un crashloop ici ne doit PAS bloquer les autres apps.
+  wait: false
+  timeout: 5m

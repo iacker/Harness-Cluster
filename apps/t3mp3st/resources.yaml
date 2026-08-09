@@ -40,7 +40,7 @@ spec:
     spec:
       initContainers:
         - name: fetch-and-install
-          image: node:20
+          image: node:22
           workingDir: /app
           command: ["sh", "-c"]
           args:
@@ -62,7 +62,7 @@ spec:
             limits: {cpu: "1", memory: "1Gi"}
       containers:
         - name: t3mp3st
-          image: node:20
+          image: node:22
           workingDir: /app
           command: ["npm", "run", "server"]
           ports:
