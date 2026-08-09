@@ -71,8 +71,11 @@ spec:
             editable: true
             options:
               path: /var/lib/grafana/dashboards/default
-    dashboardsConfigMaps:
-      default: grafana-dashboard-kepler
+    # dashboards decouverts par le sidecar (label grafana_dashboard=1) :
+    # grafana-dashboard-kepler + grafana-dashboard-cost
     sidecar:
       dashboards:
-        enabled: false        # on monte via dashboardsConfigMaps explicitement
+        enabled: true
+        label: grafana_dashboard
+        labelValue: "1"
+        searchNamespace: monitoring

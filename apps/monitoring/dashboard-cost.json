@@ -1,0 +1,394 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "graphTooltip": 0,
+  "title": "Coût énergétique (€) — k3s-lab",
+  "uid": "energie-cout-eur",
+  "tags": [
+    "kepler",
+    "energie",
+    "cout",
+    "k3s-lab"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "eur_per_kwh",
+        "label": "Prix kWh (€)",
+        "type": "textbox",
+        "query": "0.25",
+        "current": {
+          "text": "0.25",
+          "value": "0.25"
+        }
+      },
+      {
+        "name": "overhead_w",
+        "label": "Overhead/nœud (W hors-RAPL)",
+        "type": "textbox",
+        "query": "8",
+        "current": {
+          "text": "8",
+          "value": "8"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "text",
+      "title": "À lire",
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Kepler (RAPL) mesure le CPU + DRAM, pas la machine entière.** On ajoute un *overhead* fixe par nœud (`$overhead_w` W : carte mère, SSD, ventilos, pertes alim) pour estimer la conso **à la prise**. Ajuste `Prix kWh` et `Overhead` en haut. Un wattmètre sur prise permettrait de caler l'overhead au watt près."
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Puissance estimée à la prise",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 3
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "decimals": 1,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 60
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(kepler_node_cpu_watts) + $overhead_w * count(kepler_node_cpu_watts{zone=\"package\"})",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PDE6745920139CE56"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PDE6745920139CE56"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Coût / jour (projeté)",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 3
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyEUR",
+          "decimals": 3,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "(sum(kepler_node_cpu_watts) + $overhead_w * count(kepler_node_cpu_watts{zone=\"package\"})) / 1000 * 24 * $eur_per_kwh",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PDE6745920139CE56"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PDE6745920139CE56"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Coût / mois (projeté)",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 3
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyEUR",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "purple"
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "(sum(kepler_node_cpu_watts) + $overhead_w * count(kepler_node_cpu_watts{zone=\"package\"})) / 1000 * 24 * 30.44 * $eur_per_kwh",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PDE6745920139CE56"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PDE6745920139CE56"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Coût / an (projeté)",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 3
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyEUR",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "(sum(kepler_node_cpu_watts) + $overhead_w * count(kepler_node_cpu_watts{zone=\"package\"})) / 1000 * 24 * 365 * $eur_per_kwh",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PDE6745920139CE56"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PDE6745920139CE56"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Puissance estimée à la prise, par nœud (W)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(kepler_node_cpu_watts) by (node_name) + $overhead_w",
+          "legendFormat": "{{node_name}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PDE6745920139CE56"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PDE6745920139CE56"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Coût mensuel projeté dans le temps (€)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyEUR",
+          "decimals": 2,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 15
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "(sum(kepler_node_cpu_watts) + $overhead_w * count(kepler_node_cpu_watts{zone=\"package\"})) / 1000 * 24 * 30.44 * $eur_per_kwh",
+          "legendFormat": "coût mensuel projeté",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PDE6745920139CE56"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PDE6745920139CE56"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Énergie CPU réelle mesurée (kWh) — sur la plage",
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 0,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth",
+          "decimals": 4,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(kepler_node_cpu_joules_total[$__range])) / 3600000",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PDE6745920139CE56"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PDE6745920139CE56"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Coût CPU réel mesuré (€) — sur la plage (RAPL seul)",
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 8,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyEUR",
+          "decimals": 4,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(kepler_node_cpu_joules_total[$__range])) / 3600000 * $eur_per_kwh",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PDE6745920139CE56"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PDE6745920139CE56"
+      }
+    },
+    {
+      "type": "piechart",
+      "title": "Répartition puissance CPU par namespace (W)",
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 16,
+        "y": 16
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "decimals": 2
+        }
+      },
+      "targets": [
+        {
+          "expr": "sort_desc(sum(kepler_container_cpu_watts) by (container_namespace))",
+          "legendFormat": "{{container_namespace}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PDE6745920139CE56"
+          }
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PDE6745920139CE56"
+      }
+    }
+  ]
+}

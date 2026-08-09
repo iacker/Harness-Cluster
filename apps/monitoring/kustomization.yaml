@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - prometheus.yaml
   - dashboard-configmap.yaml
+  - dashboard-cost-configmap.yaml
   - grafana.yaml
   - networkpolicy.yaml
   - rbac-nodes-proxy.yaml
