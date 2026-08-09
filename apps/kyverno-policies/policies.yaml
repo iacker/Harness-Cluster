@@ -1,0 +1,89 @@
+---
+# Politiques Kyverno en mode Audit (rapportent les violations sans bloquer).
+# Inspirees des vrais incidents de la session :
+#  - :latest (bitnami/kubectl:latest a casse au sunset)
+#  - pas de limits (Prometheus OOM crashloop 3548x faute de limite adaptee)
+#  - runAsNonRoot (durcissement DevSecOps)
+# Passer validationFailureAction a Enforce apres une periode d'observation.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+  annotations:
+    policies.kyverno.io/title: Interdire le tag latest
+    policies.kyverno.io/category: Supply Chain
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-image-tag
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      validate:
+        message: "Une image doit avoir un tag explicite (pas de :latest implicite)."
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resource-limits
+  annotations:
+    policies.kyverno.io/title: Exiger requests/limits
+    policies.kyverno.io/category: Reliability
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-limits
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      validate:
+        message: "Chaque conteneur doit definir resources.limits (memory+cpu)."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    memory: "?*"
+                    cpu: "?*"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-run-as-nonroot
+  annotations:
+    policies.kyverno.io/title: Exiger runAsNonRoot
+    policies.kyverno.io/category: Security
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: run-as-non-root
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      # exclure les ns qui ont legitimement besoin de privileges hote
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kepler
+                - monitoring-system
+                - logging
+                - system-upgrade
+                - backup
+                - kube-system
+      validate:
+        message: "Les conteneurs devraient tourner en runAsNonRoot: true."
+        pattern:
+          spec:
+            =(securityContext):
+              =(runAsNonRoot): "true"
