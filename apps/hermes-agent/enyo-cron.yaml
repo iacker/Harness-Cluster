@@ -66,7 +66,7 @@ spec:
               -o name | head -1); [ -z "$POD" ] && exit 0; kubectl -n hermes exec
               "$POD" -- sh -lc '/opt/hermes/.venv/bin/hermes cron tick' 2>&1 | tail
               -3
-            image: rancher/kubectl:v1.36.2
+            image: alpine/k8s:1.36.2
             imagePullPolicy: Always
             name: tick
             resources: {}
