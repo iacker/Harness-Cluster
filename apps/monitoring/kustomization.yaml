@@ -7,3 +7,4 @@ resources:
   - networkpolicy.yaml
   - rbac-nodes-proxy.yaml
   - ingress.yaml
+  - alertmanager-secret.sops.yaml

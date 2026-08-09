@@ -63,7 +63,38 @@ spec:
   values:
     # --- observabilite cluster complete : KSM + node-exporter actives ---
     alertmanager:
-      enabled: false          # active des qu'un webhook Discord/Telegram est fourni
+      enabled: true
+      # monter le secret SOPS (token + chat_id) dans le pod alertmanager
+      extraSecretMounts:
+        - name: telegram
+          secretName: alertmanager-telegram
+          mountPath: /etc/alertmanager/telegram
+          readOnly: true
+      config:
+        global:
+          resolve_timeout: 5m
+        route:
+          group_by: ['alertname', 'namespace']
+          group_wait: 30s
+          group_interval: 5m
+          repeat_interval: 4h
+          receiver: telegram
+        receivers:
+          - name: telegram
+            telegram_configs:
+              - bot_token_file: /etc/alertmanager/telegram/bot_token
+                chat_id: 7734064984
+                api_url: https://api.telegram.org
+                parse_mode: HTML
+                message: |
+                  {{ if eq .Status "firing" }}🔴{{ else }}✅{{ end }} <b>{{ .CommonLabels.alertname }}</b>
+                  <b>Statut:</b> {{ .Status }}
+                  {{ range .Alerts }}<b>ns:</b> {{ .Labels.namespace }} <b>pod:</b> {{ .Labels.pod }}
+                  {{ .Annotations.description }}
+                  {{ end }}
+      resources:
+        requests: {cpu: 10m, memory: 32Mi}
+        limits: {cpu: 100m, memory: 64Mi}
     kube-state-metrics:
       enabled: true           # etat des objets K8s (pods, deploy, ds...)
     prometheus-node-exporter:
@@ -92,6 +123,41 @@ spec:
       global:
         scrape_interval: 30s
     # scrape statique de l'endpoint Kepler (svc kepler.kepler:28282)
+    serverFiles:
+      alerting_rules.yml:
+        groups:
+          - name: k3s-lab-sante
+            rules:
+              - alert: PodCrashLooping
+                expr: rate(kube_pod_container_status_restarts_total[10m]) * 600 > 3
+                for: 5m
+                labels: {severity: critical}
+                annotations:
+                  description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} redemarre en boucle (>3/10min)."
+              - alert: PodNotReady
+                expr: sum by (namespace, pod) (kube_pod_status_ready{condition="false"}) > 0
+                for: 15m
+                labels: {severity: warning}
+                annotations:
+                  description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} non Ready depuis 15min."
+              - alert: NodeNotReady
+                expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+                for: 5m
+                labels: {severity: critical}
+                annotations:
+                  description: "Noeud {{ $labels.node }} NotReady depuis 5min."
+              - alert: NodeMemoryPressure
+                expr: kube_node_status_condition{condition="MemoryPressure",status="true"} == 1
+                for: 5m
+                labels: {severity: warning}
+                annotations:
+                  description: "Noeud {{ $labels.node }} sous pression memoire."
+              - alert: PVCAlmostFull
+                expr: kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 0.10
+                for: 10m
+                labels: {severity: warning}
+                annotations:
+                  description: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} <10% libre."
     extraScrapeConfigs: |
       - job_name: kepler
         static_configs:
