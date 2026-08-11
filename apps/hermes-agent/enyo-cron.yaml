@@ -11,20 +11,12 @@ metadata:
   name: enyo-ticker
   namespace: hermes
 rules:
-- apiGroups:
-  - ''
-  resources:
-  - pods
-  verbs:
-  - get
-  - list
-- apiGroups:
-  - ''
-  resources:
-  - pods/exec
-  verbs:
-  - create
-  - get
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create", "get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -36,9 +28,9 @@ roleRef:
   kind: Role
   name: enyo-ticker
 subjects:
-- kind: ServiceAccount
-  name: enyo-ticker
-  namespace: hermes
+  - kind: ServiceAccount
+    name: enyo-ticker
+    namespace: hermes
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -49,39 +41,32 @@ metadata:
   name: enyo-cron-ticker
   namespace: hermes
 spec:
+  schedule: "* * * * *"
   concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 30
+  successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
   jobTemplate:
-    metadata: {}
     spec:
       activeDeadlineSeconds: 110
-      template:
-        metadata: {}
-        spec:
-          containers:
-          - command:
-            - /bin/sh
-            - -c
-            - POD=$(kubectl -n hermes get pod -l app=hermes --field-selector=status.phase=Running
-              -o name | head -1); [ -z "$POD" ] && exit 0; kubectl -n hermes exec
-              "$POD" -- sh -lc '/opt/hermes/.venv/bin/hermes cron tick' 2>&1 | tail
-              -3
-            image: alpine/k8s:1.36.2
-            imagePullPolicy: Always
-            name: tick
-            resources: {}
-            terminationMessagePath: /dev/termination-log
-            terminationMessagePolicy: File
-          dnsPolicy: ClusterFirst
-          restartPolicy: Never
-          schedulerName: default-scheduler
-          securityContext: {}
-          serviceAccount: enyo-ticker
-          serviceAccountName: enyo-ticker
-          terminationGracePeriodSeconds: 30
       ttlSecondsAfterFinished: 120
-  schedule: '* * * * *'
-  successfulJobsHistoryLimit: 1
-  suspend: false
-  startingDeadlineSeconds: 30
-
+      template:
+        spec:
+          serviceAccountName: enyo-ticker
+          restartPolicy: Never
+          containers:
+            - name: tick
+              image: alpine/k8s:1.36.2
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - >-
+                  POD=$(kubectl -n hermes get pod -l app=hermes
+                  --field-selector=status.phase=Running -o name | head -1);
+                  [ -z "$POD" ] && exit 0;
+                  kubectl -n hermes exec "$POD" -- sh -lc
+                  '/opt/hermes/.venv/bin/hermes cron tick' 2>&1 | tail -3
+              resources:
+                requests: {cpu: "10m", memory: "32Mi"}
+                limits: {cpu: "100m", memory: "128Mi"}
