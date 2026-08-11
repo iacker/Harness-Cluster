@@ -1,0 +1,28 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "platform": "github",
+  "onboarding": false,
+  "requireConfig": "required",
+  "enabledManagers": ["flux", "kubernetes", "github-actions"],
+  "timezone": "Europe/Paris",
+  "schedule": ["before 06:00 on Monday"],
+  "dependencyDashboard": true,
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "automerge": false,
+  "packageRules": [
+    {
+      "description": "Group Flux Helm chart updates",
+      "matchManagers": ["flux"],
+      "groupName": "Flux Helm charts"
+    },
+    {
+      "description": "Keep security updates separate and visible",
+      "matchUpdateTypes": ["patch", "minor"],
+      "matchConfidence": ["high", "very high"],
+      "labels": ["dependencies", "security-review"]
+    }
+  ]
+}
