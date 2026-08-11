@@ -19,9 +19,8 @@
       "groupName": "Flux Helm charts"
     },
     {
-      "description": "Keep security updates separate and visible",
+      "description": "Keep patch and minor updates visible",
       "matchUpdateTypes": ["patch", "minor"],
-      "matchConfidence": ["high", "very high"],
       "labels": ["dependencies", "security-review"]
     }
   ]
