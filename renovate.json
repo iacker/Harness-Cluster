@@ -5,6 +5,12 @@
   "onboarding": false,
   "requireConfig": "required",
   "enabledManagers": ["flux", "kubernetes", "github-actions"],
+  "flux": {
+    "managerFilePatterns": ["/(?:^|\/)(?:apps|clusters)\/.+\\.ya?ml$/"]
+  },
+  "kubernetes": {
+    "managerFilePatterns": ["/(?:^|\/)(?:apps|clusters)\/.+\\.ya?ml$/"]
+  },
   "timezone": "Europe/Paris",
   "schedule": ["before 06:00 on Monday"],
   "dependencyDashboard": true,
