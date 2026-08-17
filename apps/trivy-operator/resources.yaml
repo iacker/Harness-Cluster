@@ -43,7 +43,11 @@ spec:
       vulnerabilityScannerEnabled: true
       configAuditScannerEnabled: true
       rbacAssessmentScannerEnabled: true
-      infraAssessmentScannerEnabled: true
+      # Desactive: le node-collector exige hostPID + hostPath (/var/lib/etcd,
+      # /etc/kubernetes...) et viole le PodSecurity "baseline" du namespace.
+      # Sans ca, le job node-collector boucle en FailedCreate toutes les 30s.
+      infraAssessmentScannerEnabled: false
+      clusterComplianceEnabled: false
       exposedSecretScannerEnabled: true
       sbomGenerationEnabled: false
     trivy:
