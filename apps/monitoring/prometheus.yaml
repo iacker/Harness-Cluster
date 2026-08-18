@@ -102,9 +102,12 @@ spec:
       # node-exporter a besoin de hostNetwork/hostPID/hostPath -> incompatible
       # PSS baseline du ns monitoring. On le deporte dans un ns dedie privileged.
       namespaceOverride: monitoring-system
+      # Pas de limit CPU: mesure du 18/08, node-exporter etait throttle sur 53%
+      # des fenetres CFS avec limits.cpu=100m. Un collecteur de metriques
+      # throttle rend des scrapes lents ou incomplets.
       resources:
         requests: {cpu: 20m, memory: 32Mi}
-        limits: {cpu: 100m, memory: 64Mi}
+        limits: {memory: 64Mi}
     prometheus-pushgateway:
       enabled: false
     server:

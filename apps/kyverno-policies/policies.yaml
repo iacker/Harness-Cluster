@@ -45,13 +45,22 @@ spec:
           - resources:
               kinds: [Pod]
       validate:
-        message: "Chaque conteneur doit definir resources.limits (memory+cpu)."
+        # On exige uniquement la limite MEMOIRE. Une limite CPU est un cap dur
+        # applique par le CFS: le pod est throttle meme quand le noeud a du CPU
+        # libre, et elle ne protege PAS les pods voisins (leur protection vient
+        # de leurs propres requests). Mesure sur node1 le 18/08: kepler throttle
+        # 84% des fenetres CFS, node-exporter 53%.
+        # La limite memoire reste exigee: la RAM est incompressible, sans cap un
+        # pod qui fuit fait OOM tout le noeud.
+        # Ref: Tim Hockin (co-fondateur k8s), Datadog, robusta.dev
+        message: "Chaque conteneur doit definir resources.limits.memory et resources.requests.cpu."
         pattern:
           spec:
             containers:
               - resources:
                   limits:
                     memory: "?*"
+                  requests:
                     cpu: "?*"
 ---
 apiVersion: kyverno.io/v1

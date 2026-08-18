@@ -84,12 +84,14 @@ spec:
           operator: Exists
           effect: NoSchedule
       # noeuds Celeron 4Go/2c : bornes basses mais confortables
+      # Pas de limit CPU: mesure du 18/08, kepler etait throttle sur 84% des
+      # fenetres CFS avec limits.cpu=200m, alors que le noeud avait du CPU libre.
+      # Le request suffit a garantir la part sous contention.
       resources:
         requests:
           cpu: 50m
           memory: 64Mi
         limits:
-          cpu: 200m
           memory: 128Mi
     serviceMonitor:
       enabled: false          # passer a true si Prometheus-Operator installe
