@@ -3,3 +3,30 @@ kind: Kustomization
 resources:
 - gotk-components.yaml
 - gotk-sync.yaml
+patches:
+  # node1 (control-plane, 2 vCPU / 3.8Go) sature: les probes par defaut de Flux
+  # (timeoutSeconds: 1) expirent des que l'API ralentit, ce qui met les quatre
+  # controleurs en CrashLoopBackOff. Le source-controller tombe -> les
+  # HelmRelease ne peuvent plus telecharger leurs charts ("Could not load
+  # chart: connection refused") -> tout le GitOps se fige.
+  # Incident du 18/08/2026: 140+ restarts par controleur.
+  - target:
+      kind: Deployment
+      namespace: flux-system
+      labelSelector: app.kubernetes.io/part-of=flux
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/livenessProbe/timeoutSeconds
+        value: 10
+      - op: add
+        path: /spec/template/spec/containers/0/livenessProbe/failureThreshold
+        value: 10
+      - op: add
+        path: /spec/template/spec/containers/0/livenessProbe/periodSeconds
+        value: 30
+      - op: replace
+        path: /spec/template/spec/containers/0/readinessProbe/timeoutSeconds
+        value: 10
+      - op: add
+        path: /spec/template/spec/containers/0/readinessProbe/failureThreshold
+        value: 10
