@@ -44,6 +44,23 @@ spec:
     # lab 2 noeuds : 1 replica par composant (pas de HA)
     admissionController:
       replicas: 1
+      # node1 (control-plane, 2 vCPU) sature en I/O: les probes par defaut
+      # (timeout 5s, failureThreshold 2) tuent le pod des que l'API ralentit,
+      # ce qui vide kyverno-svc et bloque TOUTE creation de pod (webhook Fail).
+      livenessProbe:
+        httpGet: {path: /health/liveness, port: 9443, scheme: HTTPS}
+        initialDelaySeconds: 30
+        periodSeconds: 30
+        timeoutSeconds: 15
+        failureThreshold: 10
+        successThreshold: 1
+      readinessProbe:
+        httpGet: {path: /health/readiness, port: 9443, scheme: HTTPS}
+        initialDelaySeconds: 15
+        periodSeconds: 15
+        timeoutSeconds: 15
+        failureThreshold: 12
+        successThreshold: 1
       resources:
         requests: {cpu: 50m, memory: 128Mi}
         limits: {cpu: 500m, memory: 384Mi}
