@@ -1,0 +1,46 @@
+# CoreDNS haute dispo — 2 repliques reparties sur les deux noeuds.
+#
+# CONTEXTE (incident du 18/08/2026)
+# CoreDNS tournait en replique UNIQUE sur node1. Quand node1 a sature
+# (PSI io >90%), le pod a rate ses probes et redemarre en boucle: le DNS
+# est mort pour TOUT le cluster. Flux ne resolvait plus github.com, les
+# HelmRelease ne pouvaient plus telecharger leurs charts, et l'incident
+# s'est propage bien au-dela du noeud en cause.
+#
+# POURQUOI CE FICHIER EXISTE
+# CoreDNS est installe par k3s comme Addon
+# (objectset.rio.cattle.io/owner-gvk: k3s.cattle.io/v1, Kind=Addon), donc il
+# n'est PAS gere par Flux a l'origine. La methode k3s officielle serait un
+# HelmChartConfig dans /var/lib/rancher/k3s/server/manifests/, ce qui exige
+# un acces root sur node1 (indisponible: pas de sudo NOPASSWD).
+#
+# On applique donc le reglage en GitOps via un patch strategic merge. Flux le
+# reapplique a chaque reconciliation, ce qui le rend durable meme si k3s
+# redemarre et recree l'Addon avec ses valeurs par defaut.
+#
+# NE PAS remplacer par un Deployment complet: on ne veut patcher que
+# replicas + affinity et laisser k3s gerer l'image, la config et le reste.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coredns
+  namespace: kube-system
+spec:
+  replicas: 2
+  template:
+    spec:
+      affinity:
+        podAntiAffinity:
+          # "preferred" et non "required": sur un cluster a 2 noeuds, un
+          # "required" empecherait le rescheduling des deux repliques si un
+          # noeud tombe. On veut la repartition, pas une contrainte dure.
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: k8s-app
+                      operator: In
+                      values:
+                        - kube-dns
+                topologyKey: kubernetes.io/hostname

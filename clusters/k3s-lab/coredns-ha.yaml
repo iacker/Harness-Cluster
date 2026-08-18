@@ -1,0 +1,18 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: coredns-ha
+  namespace: flux-system
+spec:
+  interval: 30m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/coredns-ha
+  # prune: false — CoreDNS appartient a k3s (Addon). On patche un objet
+  # existant; un prune supprimerait le Deployment k3s si ce fichier
+  # disparaissait du repo, ce qui tuerait le DNS du cluster.
+  prune: false
+  # wait: false — le reste du GitOps ne doit jamais dependre de ce patch.
+  wait: false
+  timeout: 2m
