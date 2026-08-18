@@ -65,6 +65,11 @@ spec:
         requests: {cpu: 50m, memory: 128Mi}
         limits: {cpu: 500m, memory: 384Mi}
     backgroundController:
+      # Deporte sur cloud4dev: node1 (control-plane, 2 vCPU / 3.8Go) est
+      # sature. L'admission controller reste sur node1 car il est sur le
+      # chemin critique des requetes API.
+      nodeSelector:
+        kubernetes.io/hostname: cloud4dev
       resources:
         requests: {cpu: 20m, memory: 64Mi}
         limits: {cpu: 200m, memory: 128Mi}
