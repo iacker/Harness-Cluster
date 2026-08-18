@@ -38,6 +38,16 @@ spec:
     remediation:
       retries: 3
   values:
+    # node1 est le control-plane (2 vCPU / 3.8Go) et sature en I/O.
+    # On eloigne les jobs de scan (gros conso CPU+IO) vers cloud4dev.
+    trivyOperator:
+      scanJobAffinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
     operator:
       scanJobsConcurrentLimit: 1
       vulnerabilityScannerEnabled: true
