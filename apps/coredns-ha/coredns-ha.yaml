@@ -27,7 +27,18 @@ metadata:
   namespace: kube-system
 spec:
   replicas: 2
+  # selector + labels du template sont OBLIGATOIRES ici: Flux valide chaque
+  # manifeste par un dry-run cote client avant apply, et un Deployment sans
+  # selector est rejete ("spec.selector: Required value"). Ces valeurs doivent
+  # correspondre EXACTEMENT a celles de l'Addon k3s, sinon l'apply echoue sur
+  # un champ immutable.
+  selector:
+    matchLabels:
+      k8s-app: kube-dns
   template:
+    metadata:
+      labels:
+        k8s-app: kube-dns
     spec:
       affinity:
         podAntiAffinity:
