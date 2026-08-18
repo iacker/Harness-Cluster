@@ -73,6 +73,12 @@ spec:
         requests: {cpu: 20m, memory: 64Mi}
         limits: {cpu: 200m, memory: 128Mi}
     reportsController:
+      # Desactive: ce controleur reecrit en continu les PolicyReports dans le
+      # datastore SQLite de k3s, ce qui sature les I/O de node1 (2 vCPU).
+      # Il a ete observe bloque en etat D pendant l'incident du 18/08.
+      # L'enforcement admission (la vraie valeur securite) n'est pas impacte:
+      # seuls les rapports d'audit disparaissent.
+      enabled: false
       resources:
         requests: {cpu: 20m, memory: 64Mi}
         limits: {cpu: 200m, memory: 128Mi}
