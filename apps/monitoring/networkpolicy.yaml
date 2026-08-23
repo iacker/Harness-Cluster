@@ -19,8 +19,12 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: monitoring
+    # harnais de mesure Kepler Field-Lab : lecture seule de l'API Prometheus
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kepler-lab
       ports:
-        # harnais de mesure Kepler Field-Lab : lecture seule de l'API Prometheus
         - protocol: TCP
           port: 9090
     # autoriser Traefik (kube-system) a joindre Grafana pour l'Ingress TLS
