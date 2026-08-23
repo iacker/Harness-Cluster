@@ -171,10 +171,24 @@ spec:
                 annotations:
                   description: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} <10% libre."
     extraScrapeConfigs: |
+      # Kepler est un DaemonSet : scraper via le Service ClusterIP ne touchait
+      # qu'UN des deux pods (LB round-robin fige la cible), donc node1
+      # n'apparaissait jamais dans kepler_node_cpu_watts. On decouvre chaque
+      # pod individuellement.
       - job_name: kepler
-        static_configs:
-          - targets:
-              - kepler.kepler.svc.cluster.local:28282
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [kepler]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            regex: kepler
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_container_port_number]
+            regex: "28282"
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: instance
         metrics_path: /metrics
       # kubelet cAdvisor (metriques conteneurs/pods par noeud)
       - job_name: kubelet-cadvisor
