@@ -66,6 +66,7 @@ spec:
               value: "0.0.0.0"
           envFrom:
             - secretRef: {name: hermes-secrets}
+            - secretRef: {name: htb-token, optional: true}
           ports:
             - containerPort: 9119
               name: gateway
