@@ -1,0 +1,313 @@
+---
+# Kepler Field-Lab : banc de validation de l'attribution energetique.
+# Le pod du harnais lit le RAPL brut du noeud (hostPath /sys, lecture seule),
+# s'impose une charge CPU calibree, puis compare la puissance marginale
+# mesuree a celle que Kepler attribue au pod (kepler_pod_cpu_watts).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kepler-lab
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    purpose: kepler-validation
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fieldlab-src
+  namespace: kepler-lab
+data:
+  fieldlab.py: |
+    #!/usr/bin/env python3
+    """
+    Kepler Field-Lab - harnais de validation d'attribution energetique.
+
+    Question posee : quand un pod consomme du CPU, la puissance que Kepler lui
+    attribue (kepler_pod_cpu_watts) correspond-elle a la puissance reellement
+    mesuree au compteur RAPL du noeud ?
+
+    Methode : ce pod EST le sujet de l'experience. Il alterne des phases de charge
+    CPU calibrees et lit lui-meme le compteur RAPL du noeud. Sur un cluster sans
+    bruit de fond, la hausse de puissance mesuree pendant une phase de charge est
+    imputable a ce pod et a lui seul. On compare cette hausse a ce que Kepler
+    declare, et l'ecart est l'erreur d'attribution.
+
+    Sortie : JSON sur stdout, consomme par le cron Hermes qui le documente.
+    """
+    import json
+    import os
+    import resource
+    import subprocess
+    import sys
+    import time
+    import urllib.parse
+    import urllib.request
+
+    PROM = os.environ.get("PROM_URL", "http://prometheus-server.monitoring.svc.cluster.local")
+    POD_NAME = os.environ.get("POD_NAME", "")
+    NODE_NAME = os.environ.get("NODE_NAME", "")
+    SETTLE = int(os.environ.get("SETTLE_SECONDS", "20"))
+    PHASE = int(os.environ.get("PHASE_SECONDS", "60"))
+
+
+    def zones():
+        """Toutes les sous-zones RAPL du package 0, avec leur nom."""
+        out = {}
+        for suffix in ("", ":0", ":1", ":2"):
+            path = f"/host/sys/class/powercap/intel-rapl:0{suffix}"
+            try:
+                with open(f"{path}/name") as f:
+                    name = f.read().strip()
+                # RAPL nomme la zone racine "package-0"; Kepler l'expose comme
+                # "package". On normalise pour comparer les memes etiquettes.
+                if name.startswith("package"):
+                    name = "package"
+                with open(f"{path}/energy_uj") as f:
+                    int(f.read())
+                out[name] = f"{path}/energy_uj"
+            except (OSError, ValueError):
+                continue
+        return out
+
+
+    ZONES = zones()
+
+
+    def energy():
+        snap = {}
+        for name, path in ZONES.items():
+            try:
+                with open(path) as f:
+                    snap[name] = int(f.read())
+            except (OSError, ValueError):
+                pass
+        return snap
+
+
+    def cpu_usage_us():
+        """Microsecondes CPU de CE processus et de ses enfants.
+
+        On n'utilise PAS /sys/fs/cgroup/cpu.stat : dans un conteneur privilegie
+        il pointe le cgroup racine de l'hote, donc il mesurait toute la machine
+        (~0.9 coeur "consomme" par un pod pourtant au repos). rusage ne compte
+        que notre propre arbre de processus, c'est-a-dire la charge injectee.
+        """
+        r = resource.getrusage(resource.RUSAGE_SELF)
+        c = resource.getrusage(resource.RUSAGE_CHILDREN)
+        total = r.ru_utime + r.ru_stime + c.ru_utime + c.ru_stime
+        return int(total * 1e6)
+
+
+    def burn(cores, seconds):
+        """Charge CPU calibree : `cores` boucles serrees pendant `seconds`."""
+        procs = [
+            subprocess.Popen(
+                [sys.executable, "-c",
+                 f"import time\nt=time.time()+{seconds}\nwhile time.time()<t: pass"]
+            )
+            for _ in range(cores)
+        ]
+        for p in procs:
+            p.wait()
+
+
+    def run_phase(label, cores, seconds):
+        e0, c0, t0 = energy(), cpu_usage_us(), time.time()
+        if cores:
+            burn(cores, seconds)
+        else:
+            time.sleep(seconds)
+        e1, c1, t1 = energy(), cpu_usage_us(), time.time()
+
+        elapsed = t1 - t0
+        watts = {}
+        for name in e0:
+            if name in e1 and e1[name] >= e0[name]:
+                watts[name] = (e1[name] - e0[name]) / 1e6 / elapsed
+
+        return {
+            "phase": label,
+            "cores": cores,
+            "start_unix": t0,
+            "end_unix": t1,
+            "elapsed_s": round(elapsed, 2),
+            "rapl_watts": {k: round(v, 4) for k, v in watts.items()},
+            "pod_cpu_seconds": round((c1 - c0) / 1e6, 3) if c0 is not None else None,
+            "pod_cpu_cores_avg": round((c1 - c0) / 1e6 / elapsed, 3) if c0 is not None else None,
+        }
+
+
+    def prom(query, start, end, step=5):
+        url = f"{PROM}/api/v1/query_range?" + urllib.parse.urlencode(
+            {"query": query, "start": start, "end": end, "step": step})
+        try:
+            with urllib.request.urlopen(url, timeout=20) as r:
+                data = json.load(r)
+        except Exception as exc:
+            return {"error": str(exc)}
+        if data.get("status") != "success":
+            return {"error": data.get("error", "query failed")}
+        result = data["data"]["result"]
+        if not result:
+            return {"samples": 0, "avg": None}
+        vals = [float(v[1]) for s in result for v in s["values"]]
+        return {"samples": len(vals), "avg": round(sum(vals) / len(vals), 5) if vals else None}
+
+
+    def main():
+        if not ZONES:
+            print(json.dumps({"error": "aucune zone RAPL lisible"}))
+            return 1
+
+        report = {
+            "schema": "kepler-field-lab/v1",
+            "started_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "node": NODE_NAME,
+            "pod": POD_NAME,
+            "rapl_zones": sorted(ZONES.keys()),
+            "phase_seconds": PHASE,
+        }
+
+        time.sleep(SETTLE)
+
+        phases = [
+            run_phase("idle_before", 0, PHASE),
+            run_phase("load_1core", 1, PHASE),
+            run_phase("idle_mid", 0, PHASE),
+            run_phase("load_2core", 2, PHASE),
+            run_phase("idle_after", 0, PHASE),
+        ]
+
+        time.sleep(30)
+
+        sel = f'pod_name="{POD_NAME}"' if POD_NAME else f'node_name="{NODE_NAME}"'
+        for ph in phases:
+            s, e = int(ph["start_unix"]), int(ph["end_unix"])
+            ph["kepler_pod_watts"] = prom(f'sum(kepler_pod_cpu_watts{{{sel}}})', s, e)
+            ph["kepler_node_watts"] = prom(
+                f'kepler_node_cpu_watts{{node_name="{NODE_NAME}",zone="package"}}', s, e)
+
+        idles = [p for p in phases if p["cores"] == 0 and "package" in p["rapl_watts"]]  # noqa
+        baseline = sum(p["rapl_watts"]["package"] for p in idles) / len(idles) if idles else None
+        report["baseline_idle_watts"] = round(baseline, 4) if baseline else None
+
+        findings = []
+        for ph in phases:
+            if ph["cores"] == 0 or baseline is None:
+                continue
+            pkg = ph["rapl_watts"].get("package")
+            if pkg is None:
+                continue
+            delta = pkg - baseline
+            claimed = (ph["kepler_pod_watts"] or {}).get("avg")
+            item = {
+                "phase": ph["phase"],
+                "cores": ph["cores"],
+                "rapl_package_watts": round(pkg, 4),
+                "rapl_marginal_watts": round(delta, 4),
+                "kepler_attributed_watts": claimed,
+                "pod_cpu_cores_avg": ph["pod_cpu_cores_avg"],
+            }
+            if claimed is not None and delta > 0.05:
+                item["attribution_ratio"] = round(claimed / delta, 4)
+                item["attribution_error_pct"] = round((claimed - delta) / delta * 100, 2)
+            findings.append(item)
+        report["attribution"] = findings
+
+        checks = []
+        for ph in phases:
+            w = ph["rapl_watts"]
+            pkg = w.get("package")
+            subs = {k: v for k, v in w.items() if k != "package"}
+            if pkg and subs:
+                total = sum(subs.values())
+                checks.append({
+                    "phase": ph["phase"],
+                    "package": round(pkg, 4),
+                    "subzones_sum": round(total, 4),
+                    "overshoot_pct": round((total - pkg) / pkg * 100, 2),
+                    "frozen_zones": [k for k, v in subs.items() if v == 0.0],
+                })
+        report["rapl_consistency"] = checks
+        report["phases"] = phases
+
+        print(json.dumps(report, indent=2))
+        return 0
+
+
+    if __name__ == "__main__":
+        sys.exit(main())
+---
+# Lecture seule de l'API Prometheus par le harnais (declare cote monitoring).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kepler-lab-egress-prometheus
+  namespace: kepler-lab
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - {protocol: UDP, port: 53}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - {protocol: TCP, port: 9090}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: fieldlab
+  namespace: kepler-lab
+spec:
+  # 04:15 UTC, apres la fenetre de sauvegarde, avant la journee
+  schedule: "15 4 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app: fieldlab
+        spec:
+          restartPolicy: Never
+          # node1 : control-plane, charge la plus variable = cas d'etude
+          nodeName: node1
+          tolerations:
+            - key: node-role.kubernetes.io/control-plane
+              operator: Exists
+              effect: NoSchedule
+          containers:
+            - name: fieldlab
+              image: python:3.12-alpine
+              securityContext:
+                privileged: true
+                runAsUser: 0
+              command: ["python3", "/src/fieldlab.py"]
+              env:
+                - name: POD_NAME
+                  valueFrom: {fieldRef: {fieldPath: metadata.name}}
+                - name: NODE_NAME
+                  valueFrom: {fieldRef: {fieldPath: spec.nodeName}}
+                - name: PHASE_SECONDS
+                  value: "60"
+              resources:
+                requests: {cpu: 50m, memory: 64Mi}
+                limits: {memory: 128Mi}
+              volumeMounts:
+                - {name: sys, mountPath: /host/sys, readOnly: true}
+                - {name: src, mountPath: /src}
+          volumes:
+            - {name: sys, hostPath: {path: /sys}}
+            - {name: src, configMap: {name: fieldlab-src}}

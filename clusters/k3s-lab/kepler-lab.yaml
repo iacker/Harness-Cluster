@@ -1,16 +1,17 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: logging
+  name: kepler-lab
   namespace: flux-system
 spec:
   interval: 10m
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./apps/logging
+  path: ./apps/kepler-lab
   prune: true
-  # ISOLE : la stack logs ne doit pas bloquer les autres apps si Loki galere
-  # a demarrer (schema/storage). wait:false comme kepler/monitoring.
+  # isole comme kepler : le harnais de mesure ne doit jamais bloquer les apps
   wait: false
-  timeout: 10m
+  timeout: 5m
+  dependsOn:
+    - name: kepler
