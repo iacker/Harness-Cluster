@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: enyo-github
+    namespace: hermes
+type: Opaque
+stringData:
+    GITHUB_TOKEN: ENC[AES256_GCM,data:4js8AwQK08U2v8zrNwx5TzH8Z6Mwz2fRT5LNZDo3PDcOaxo5xFciUg==,iv:mIAKzX2FRsBz3wD7O7KPE0tIVhxcZUoF+ptm2VnFzGA=,tag:LBA9VRzWL5L0mTSJzA3Fxg==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB2UzJmS0pEN3A2QmN4UFg3
+            ckRzck82bS9Tayt3Z1N2b005TElsKzh3OGc0CkhmSkRyRjdZam9WaU0zWUtqeDFU
+            U0dyM3JCdlhsVG1FbHB0TGM1SGhSTmMKLS0tIFNubjhmRTBRNXFkdGwrY2czdnkr
+            VVJpcjY5WFJCWFR5WCtmZGNOZDhnTXcKYDvp05t0M+i96dS/fnsqlwMWehX/h77C
+            Z+jDqmyy8ipZbJDeiR/La8ms617JDjcv2MqaS27gaQ5MDuTQoz3u8A==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1czdh5vwj9kk5rcmcxj99gj7v20kq7ktj8nlnkjt7sr900r2yguas5kdwpx
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-25T22:15:32Z"
+    mac: ENC[AES256_GCM,data:ePKkVNZ8saBRNEcuifrJvXHo6YO04bmxp3NBaooeLRVI1K9JWOCN/aUvD/ptqIygBIZdrtqmTwQeHgpPqCrTXdIzgEayKuK8BgqmLZ6U21+qKI6xkB/9kOPn11qkSMGpslH0UunTh0CnrkuWUb6GSXdpMASTHiwoLN2oYNAM09Y=,iv:+KFNFbqO0R4SDLPBqZrpLR7+GTv5nGlPE/x0/pQTsRI=,tag:d98sXI0k5w4SyvUViwWvyg==,type:str]
+    version: 3.13.3
