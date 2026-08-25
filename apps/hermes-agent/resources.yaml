@@ -67,6 +67,7 @@ spec:
           envFrom:
             - secretRef: {name: hermes-secrets}
             - secretRef: {name: htb-token, optional: true}
+            - secretRef: {name: enyo-github, optional: true}
           ports:
             - containerPort: 9119
               name: gateway
