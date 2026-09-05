@@ -60,6 +60,7 @@ spec:
       containers:
         - name: hermes
           image: ghcr.io/iacker/hermes-agent:desktop-web-93508
+          imagePullPolicy: Always
           args: ["webapp", "--host", "0.0.0.0", "--port", "9119", "--no-open", "--skip-build"]
           env:
             - name: HERMES_HOME
