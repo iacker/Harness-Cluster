@@ -70,7 +70,7 @@ spec:
             - name: HERMES_DASHBOARD_OAUTH_CLIENT_ID
               value: "agent:cmtnhuwqk00t1gm0aoxsmnbhb"
             - name: HERMES_DASHBOARD_PUBLIC_URL
-              value: "https://hermes.cloud4dev.fr"
+              value: "https://node1.tailff2e6.ts.net"
           envFrom:
             - secretRef: {name: hermes-secrets}
             - secretRef: {name: htb-token, optional: true}
