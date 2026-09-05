@@ -57,8 +57,8 @@ spec:
             limits: {cpu: "100m", memory: "128Mi"}
       containers:
         - name: hermes
-          image: nousresearch/hermes-agent:v2026.8.3
-          args: ["gateway", "run"]
+          image: ghcr.io/iacker/hermes-agent:desktop-web-93508
+          args: ["webapp", "--host", "0.0.0.0", "--port", "9119", "--no-open", "--skip-build"]
           env:
             - name: HERMES_HOME
               value: /opt/data
@@ -126,5 +126,6 @@ spec:
   ingress:
     - ports:
         - {protocol: TCP, port: 9900}
+        - {protocol: TCP, port: 9119}
   egress:
     - {}
