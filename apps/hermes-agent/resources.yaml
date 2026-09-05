@@ -67,6 +67,10 @@ spec:
               value: /opt/data
             - name: A2A_HOST
               value: "0.0.0.0"
+            - name: HERMES_DASHBOARD_OAUTH_CLIENT_ID
+              value: "agent:cmtnhuwqk00t1gm0aoxsmnbhb"
+            - name: HERMES_DASHBOARD_PUBLIC_URL
+              value: "https://hermes.cloud4dev.fr"
           envFrom:
             - secretRef: {name: hermes-secrets}
             - secretRef: {name: htb-token, optional: true}
