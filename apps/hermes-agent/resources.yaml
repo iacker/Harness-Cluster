@@ -68,7 +68,7 @@ spec:
             - name: A2A_HOST
               value: "0.0.0.0"
             - name: HERMES_DASHBOARD_OAUTH_CLIENT_ID
-              value: "agent:cmtnhuwqk00t1gm0aoxsmnbhb"
+              value: "agent:cmtz6itql003cgm0a418ks8ng"
             - name: HERMES_DASHBOARD_PUBLIC_URL
               value: "https://node1.tailff2e6.ts.net"
           envFrom:
