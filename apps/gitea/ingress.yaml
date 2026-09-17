@@ -1,0 +1,45 @@
+---
+# Certificat TLS pour Gitea, signe par la CA interne du lab (lab-ca-issuer).
+# Hostname: gitea.k3s-lab.local (a resoudre via /etc/hosts ou DNS local vers
+# l'IP Tailscale d'un noeud, ex 100.83.189.79).
+# NB: l'acces NodePort http://100.83.189.79:30300 reste actif en parallele
+# (les crons de backup l'utilisent) — cet ingress est purement additif.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: gitea-tls
+  namespace: gitea
+spec:
+  secretName: gitea-tls
+  duration: 8760h          # 1 an
+  dnsNames:
+    - gitea.k3s-lab.local
+  issuerRef:
+    name: lab-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gitea
+  namespace: gitea
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - gitea.k3s-lab.local
+      secretName: gitea-tls
+  rules:
+    - host: gitea.k3s-lab.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gitea
+                port:
+                  number: 3000
