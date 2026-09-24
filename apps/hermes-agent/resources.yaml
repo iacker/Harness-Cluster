@@ -51,6 +51,9 @@ spec:
               # La gateway tourne en uid 10000 : des logs laissés en root par
               # un ancien rôle l'empêchent de rouvrir son handler rotatif.
               chown -R 10000:10000 /opt/data/logs
+              # Le webapp (root) réécrit auth.json en 0600 root : la gateway
+              # (uid 10000) doit pouvoir le lire. Groupe hermes, lecture seule.
+              [ -f /opt/data/auth.json ] && chgrp 10000 /opt/data/auth.json && chmod 640 /opt/data/auth.json || true
               chmod 700 /opt/data/logs
           securityContext:
             runAsUser: 0
