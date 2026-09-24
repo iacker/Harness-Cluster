@@ -95,6 +95,11 @@ spec:
           image: ghcr.io/iacker/hermes-agent:desktop-web-93508
           imagePullPolicy: Always
           args: ["gateway", "run", "--replace"]
+          # L'image refuse (à raison) une gateway root : on la lance
+          # directement sous l'utilisateur hermes, comme le ferait l'entrypoint.
+          securityContext:
+            runAsUser: 10000
+            runAsGroup: 10000
           ports:
             - containerPort: 9900
               name: a2a
