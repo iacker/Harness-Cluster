@@ -48,6 +48,9 @@ spec:
               set -eu
               mkdir -p /opt/data/logs /opt/data/scripts /opt/data/reports
               chown -R hermes:hermes /opt/data/logs /opt/data/scripts /opt/data/reports
+              # La gateway tourne en uid 10000 : des logs laissés en root par
+              # un ancien rôle l'empêchent de rouvrir son handler rotatif.
+              chown -R 10000:10000 /opt/data/logs
               chmod 700 /opt/data/logs
           securityContext:
             runAsUser: 0
@@ -78,13 +81,37 @@ spec:
           ports:
             - containerPort: 9119
               name: gateway
-            - containerPort: 9900
-              name: a2a
           volumeMounts:
             - name: data
               mountPath: /opt/data
           resources:
             requests: {cpu: "100m", memory: "384Mi"}
+            limits: {cpu: "1", memory: "1Gi"}
+        # Gateway (plateformes, dont A2A :9900) : `webapp` ne charge AUCUNE
+        # plateforme, l'A2A était mort depuis le passage à l'image desktop-web.
+        # Même image et même HERMES_HOME, rôle séparé. Le port 9900 est porté
+        # par ce conteneur ; le Service hermes-a2a (NodePort 30900) le cible.
+        - name: gateway
+          image: ghcr.io/iacker/hermes-agent:desktop-web-93508
+          imagePullPolicy: Always
+          args: ["gateway", "run", "--replace"]
+          ports:
+            - containerPort: 9900
+              name: a2a
+          env:
+            - name: HERMES_HOME
+              value: /opt/data
+            - name: A2A_HOST
+              value: "0.0.0.0"
+          envFrom:
+            - secretRef: {name: hermes-secrets}
+            - secretRef: {name: htb-token, optional: true}
+            - secretRef: {name: enyo-github, optional: true}
+          volumeMounts:
+            - name: data
+              mountPath: /opt/data
+          resources:
+            requests: {cpu: "50m", memory: "256Mi"}
             limits: {cpu: "1", memory: "1Gi"}
       volumes:
         - name: data
