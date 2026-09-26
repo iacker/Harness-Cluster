@@ -95,6 +95,17 @@ spec:
           ports:
             - containerPort: 9119
               name: gateway
+          # Auto-réparation : un webapp figé est redémarré par le kubelet.
+          readinessProbe:
+            httpGet: {path: /api/status, port: 9119}
+            periodSeconds: 20
+            timeoutSeconds: 10
+          livenessProbe:
+            httpGet: {path: /api/status, port: 9119}
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 15
+            failureThreshold: 4
           volumeMounts:
             - name: data
               mountPath: /opt/data
@@ -120,6 +131,12 @@ spec:
           ports:
             - containerPort: 9900
               name: a2a
+          livenessProbe:
+            tcpSocket: {port: 9900}
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 4
           env:
             - name: HERMES_HOME
               value: /opt/data
