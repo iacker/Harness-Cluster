@@ -47,19 +47,22 @@ spec:
             - |
               set -eu
               mkdir -p /opt/data/logs /opt/data/scripts /opt/data/reports
-              chown -R hermes:hermes /opt/data/logs /opt/data/scripts /opt/data/reports
-              # La gateway tourne en uid 10000 : des logs laissés en root par
-              # un ancien rôle l'empêchent de rouvrir son handler rotatif.
-              chown -R 10000:10000 /opt/data/logs
-              # Le webapp (root) réécrit auth.json en 0600 root : la gateway
-              # (uid 10000) doit pouvoir le lire. Groupe hermes, lecture seule.
-              [ -f /opt/data/auth.json ] && chgrp 10000 /opt/data/auth.json && chmod 640 /opt/data/auth.json || true
+              # Les deux conteneurs tournent en uid 10000 : tout le volume
+              # doit lui appartenir (anciens fichiers root = crons et auth
+              # illisibles pour la gateway : Permission denied en boucle).
+              chown -R 10000:10000 /opt/data
+              [ -f /opt/data/auth.json ] && chmod 600 /opt/data/auth.json || true
               chmod 700 /opt/data/logs
+              # Verrou de build du webapp (/opt/hermes appartient à root dans
+              # l'image) : fichier inscriptible monté par subPath.
+              touch /work/web_ui_build.lock && chown 10000:10000 /work/web_ui_build.lock
           securityContext:
             runAsUser: 0
           volumeMounts:
             - name: data
               mountPath: /opt/data
+            - name: webapp-work
+              mountPath: /work
           resources:
             requests: {cpu: "10m", memory: "32Mi"}
             limits: {cpu: "100m", memory: "128Mi"}
@@ -68,6 +71,11 @@ spec:
           image: ghcr.io/iacker/hermes-agent:desktop-web-93508
           imagePullPolicy: Always
           args: ["webapp", "--host", "0.0.0.0", "--port", "9119", "--no-open", "--skip-build"]
+          # Même uid que la gateway : un webapp root réécrivait auth.json et
+          # les verrous cron en root, illisibles pour la gateway.
+          securityContext:
+            runAsUser: 10000
+            runAsGroup: 10000
           env:
             - name: HERMES_HOME
               value: /opt/data
@@ -87,6 +95,9 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /opt/data
+            - name: webapp-work
+              mountPath: /opt/hermes/.web_ui_build.lock
+              subPath: web_ui_build.lock
           resources:
             requests: {cpu: "100m", memory: "384Mi"}
             limits: {cpu: "1", memory: "1Gi"}
@@ -125,6 +136,8 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: hermes-data
+        - name: webapp-work
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
