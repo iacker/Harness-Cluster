@@ -37,6 +37,9 @@ spec:
       labels:
         app: hermes
     spec:
+      # Le webapp vérifie la gateway par (pid, start_time) : sans espace de
+      # processus partagé il la voit « stopped » alors qu'elle tourne.
+      shareProcessNamespace: true
       imagePullSecrets:
         - name: ghcr-pull
       initContainers:
