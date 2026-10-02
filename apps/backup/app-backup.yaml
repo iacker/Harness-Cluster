@@ -49,8 +49,9 @@ data:
     D=/backups/$(date +%Y%m%d-%H%M); mkdir -p "$D"
     enc() { age -r "$AGE_RECIPIENT" -o "$D/$1.age"; echo "$1 $(stat -c %s "$D/$1.age") octets"; }
     kubectl -n authentik exec authentik-postgresql-0 -- sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' | enc authentik.pgdump
-    kubectl -n gitea exec deploy/gitea -- tar czf - -C /data . | enc gitea-data.tgz
-    kubectl -n hermes exec deploy/hermes -c hermes -- tar czf - -C /opt/data --exclude=./cache --exclude=./.cache . | enc hermes-data.tgz
+    kubectl -n gitea exec deploy/gitea -- sh -c 'tar czf - -C /data . ; [ $? -le 1 ]' | enc gitea-data.tgz
+    # données vivantes : tar sort 1 si un fichier bouge pendant la lecture, on l'accepte
+    kubectl -n hermes exec deploy/hermes -c hermes -- sh -c 'tar czf - -C /opt/data --exclude=./cache --exclude=./.cache --warning=no-file-changed --warning=no-file-ignored . ; [ $? -le 1 ]' | enc hermes-data.tgz
     find /backups -mindepth 1 -maxdepth 1 -type d -mtime +7 -exec rm -rf {} +
     echo "OK $D"; ls /backups
 ---
