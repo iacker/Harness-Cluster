@@ -1,0 +1,13 @@
+---
+# Gitea : seulement HTTP (3000) et SSH (22). NodePort 30300/30022 (backups) arrive
+# SNATé depuis l'IP du nœud, d'où l'absence de filtre de source.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: gitea
+  namespace: gitea
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - ports: [{protocol: TCP, port: 3000}, {protocol: TCP, port: 22}]
