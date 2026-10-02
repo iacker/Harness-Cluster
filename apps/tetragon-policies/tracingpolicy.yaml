@@ -1,0 +1,26 @@
+---
+# Alerte sur lecture de fichiers sensibles de l'hôte (credentials k3s, shadow, clés SSH).
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata: {name: sensitive-file-read}
+spec:
+  kprobes:
+    - call: security_file_permission
+      syscall: false
+      return: true
+      args:
+        - {index: 0, type: file}
+        - {index: 1, type: int}
+      returnArg: {index: 0, type: int}
+      returnArgAction: Post
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Prefix
+              values:
+                - /etc/shadow
+                - /etc/rancher/k3s
+                - /var/lib/rancher/k3s/server/token
+                - /var/lib/rancher/k3s/server/tls
+                - /root/.ssh
+            - {index: 1, operator: Equal, values: ["4"]}   # MAY_READ

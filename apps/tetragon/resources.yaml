@@ -1,0 +1,46 @@
+---
+# Tetragon (eBPF) : observabilité et détection runtime au niveau noyau.
+# Le CNI reste flannel ; Tetragon ne touche pas au réseau.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tetragon
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata: {name: cilium, namespace: tetragon}
+spec: {interval: 24h, url: https://helm.cilium.io}
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata: {name: tetragon, namespace: tetragon}
+spec:
+  interval: 30m
+  timeout: 8m
+  chart:
+    spec:
+      chart: tetragon
+      version: "1.7.1"
+      sourceRef: {kind: HelmRepository, name: cilium}
+  install: {remediation: {retries: 3}}
+  upgrade: {remediation: {retries: 3}}
+  values:
+    tetragon:
+      resources:
+        requests: {cpu: 20m, memory: 96Mi}
+        limits: {memory: 384Mi}
+      # n'exporter que les alertes des TracingPolicies (pas chaque exec)
+      exportAllowList: |-
+        {"event_set":["PROCESS_KPROBE","PROCESS_LSM"]}
+      prometheus:
+        enabled: true
+    export:
+      resources:
+        requests: {cpu: 5m, memory: 16Mi}
+        limits: {memory: 64Mi}
+    tetragonOperator:
+      resources:
+        requests: {cpu: 10m, memory: 32Mi}
+        limits: {memory: 128Mi}
