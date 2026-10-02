@@ -6,6 +6,6 @@
 
 ```bash
 brew install graphviz && pip install diagrams
-python lab_diagram.py --public            # sans IP (README)
+python lab_diagram.py                     # PNG dans ce dossier
 python lab_diagram.py --out <vault>/assets  # avec IP (doc interne)
 ```
