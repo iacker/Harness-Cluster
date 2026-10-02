@@ -9,3 +9,4 @@ resources:
   - rbac-nodes-proxy.yaml
   - ingress.yaml
   - alertmanager-secret.sops.yaml
+  - grafana-oidc-secret.sops.yaml
