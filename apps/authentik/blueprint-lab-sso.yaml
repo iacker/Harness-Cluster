@@ -75,6 +75,26 @@ data:
         attrs:
           providers:
             - !Find [authentik_providers_proxy.proxyprovider, [name, lab-forward-auth]]
+          # Config complète (un attrs.config partiel remplacerait tout le dict).
+          # authentik_host vide => redirections vers http://localhost.
+          config:
+            authentik_host: https://auth.k3s-lab.local/
+            authentik_host_browser: ""
+            authentik_host_insecure: false
+            log_level: info
+            refresh_interval: minutes=5
+            object_naming_template: ak-outpost-%(name)s
+            docker_map_ports: true
+            kubernetes_replicas: 1
+            kubernetes_namespace: authentik
+            kubernetes_service_type: ClusterIP
+            kubernetes_ingress_secret_name: authentik-outpost-tls
+            kubernetes_disabled_components: []
+            kubernetes_image_pull_secrets: []
+            kubernetes_ingress_annotations: {}
+            kubernetes_httproute_annotations: {}
+            kubernetes_httproute_parent_refs: []
+            kubernetes_disable_x509_strict: false
       # Tuiles du portail (My applications), sans provider propre.
       - model: authentik_core.application
         identifiers: {slug: hermes}
