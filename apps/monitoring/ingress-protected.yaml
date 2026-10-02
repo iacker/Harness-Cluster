@@ -1,0 +1,54 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: {name: prometheus-tls, namespace: monitoring}
+spec:
+  secretName: prometheus-tls
+  duration: 8760h
+  dnsNames: [prometheus.k3s-lab.local]
+  issuerRef: {name: lab-ca-issuer, kind: ClusterIssuer, group: cert-manager.io}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prometheus
+  namespace: monitoring
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    # Protégé par Authentik (forward-auth, groupe lab-admins)
+    traefik.ingress.kubernetes.io/router.middlewares: authentik-ak-forward-auth@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls: [{hosts: [prometheus.k3s-lab.local], secretName: prometheus-tls}]
+  rules:
+    - host: prometheus.k3s-lab.local
+      http:
+        paths:
+          - {path: /, pathType: Prefix, backend: {service: {name: prometheus-server, port: {number: 80}}}}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: {name: alertmanager-tls, namespace: monitoring}
+spec:
+  secretName: alertmanager-tls
+  duration: 8760h
+  dnsNames: [alertmanager.k3s-lab.local]
+  issuerRef: {name: lab-ca-issuer, kind: ClusterIssuer, group: cert-manager.io}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    # Protégé par Authentik (forward-auth, groupe lab-admins)
+    traefik.ingress.kubernetes.io/router.middlewares: authentik-ak-forward-auth@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls: [{hosts: [alertmanager.k3s-lab.local], secretName: alertmanager-tls}]
+  rules:
+    - host: alertmanager.k3s-lab.local
+      http:
+        paths:
+          - {path: /, pathType: Prefix, backend: {service: {name: prometheus-alertmanager, port: {number: 9093}}}}

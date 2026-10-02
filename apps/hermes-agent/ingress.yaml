@@ -1,0 +1,27 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: {name: hermes-tls, namespace: hermes}
+spec:
+  secretName: hermes-tls
+  duration: 8760h
+  dnsNames: [hermes.k3s-lab.local]
+  issuerRef: {name: lab-ca-issuer, kind: ClusterIssuer, group: cert-manager.io}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hermes
+  namespace: hermes
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    # Protégé par Authentik (forward-auth, groupe lab-admins)
+    traefik.ingress.kubernetes.io/router.middlewares: authentik-ak-forward-auth@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls: [{hosts: [hermes.k3s-lab.local], secretName: hermes-tls}]
+  rules:
+    - host: hermes.k3s-lab.local
+      http:
+        paths:
+          - {path: /, pathType: Prefix, backend: {service: {name: hermes, port: {number: 9119}}}}

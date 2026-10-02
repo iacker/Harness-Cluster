@@ -8,6 +8,7 @@ resources:
   - networkpolicy.yaml
   - rbac-nodes-proxy.yaml
   - ingress.yaml
+  - ingress-protected.yaml
   - alertmanager-secret.sops.yaml
   - grafana-oidc-secret.sops.yaml
   - grafana-admin-secret.sops.yaml

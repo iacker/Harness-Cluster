@@ -35,5 +35,10 @@ spec:
       ports:
         - protocol: TCP
           port: 3000
+        # UIs Prometheus/Alertmanager derriere forward-auth Authentik
+        - protocol: TCP
+          port: 9090
+        - protocol: TCP
+          port: 9093
   egress:
     - {}

@@ -7,3 +7,4 @@ resources:
   - blueprint-lab-sso.yaml
   - helmrelease.yaml
   - ingress.yaml
+  - forward-auth.yaml
