@@ -1,0 +1,20 @@
+apiVersion: apiserver.config.k8s.io/v1
+kind: AuthenticationConfiguration
+jwt:
+  - issuer:
+      url: https://auth.k3s-lab.local/application/o/kubernetes/
+      audiences: [kubernetes]
+      certificateAuthority: |
+        -----BEGIN CERTIFICATE-----
+        MIIBbTCCARSgAwIBAgIUXHTbs4M3O84Ka/bJtvMYvJIthl4wCgYIKoZIzj0EAwIw
+        FTETMBEGA1UEAxMKazNzLWxhYi1jYTAeFw0yNjA4MDkwMTI5NDRaFw0zNjA4MDYw
+        MTI5NDRaMBUxEzARBgNVBAMTCmszcy1sYWItY2EwWTATBgcqhkjOPQIBBggqhkjO
+        PQMBBwNCAAT94cXNtyELEyL1r+SXRVUw95R3TEoZ85eingzntfHYSawUvVNjniBu
+        P/CsHLwsLTt8J8G+gptP3hGPcYvmrSmZo0IwQDAOBgNVHQ8BAf8EBAMCAqQwDwYD
+        VR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQUGutfQAtn0h6yFgCi3NENWGUQigcwCgYI
+        KoZIzj0EAwIDRwAwRAIgImo7ho1BvD45PEw2mHOboPYUQHnzwaNITIz1ZiaEmPAC
+        IFE0wqbE+5ZKAFt/HK+ac9O3V4IihC3Zkf86ZVDC2Dze
+        -----END CERTIFICATE-----
+    claimMappings:
+      username: {claim: preferred_username, prefix: "oidc:"}
+      groups: {claim: groups, prefix: "oidc:"}

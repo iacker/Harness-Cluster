@@ -1,0 +1,17 @@
+apiVersion: audit.k8s.io/v1
+kind: Policy
+omitStages: [RequestReceived]
+rules:
+  - level: None
+    users: ["system:kube-proxy", "system:apiserver"]
+  - level: None
+    resources: [{group: "", resources: [events]}, {group: coordination.k8s.io, resources: [leases]}]
+  - level: None
+    nonResourceURLs: ["/healthz*", "/readyz*", "/livez*", "/version", "/metrics"]
+  - level: None
+    verbs: [get, list, watch]
+    userGroups: ["system:nodes", "system:serviceaccounts:kube-system"]
+  # secrets/configmaps : jamais le contenu
+  - level: Metadata
+    resources: [{group: "", resources: [secrets, configmaps]}]
+  - level: Metadata

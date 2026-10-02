@@ -1,0 +1,9 @@
+# Durcissement apiserver (Arès, 2026-10-02). Retirer ce fichier + restart k3s pour revenir en arrière.
+secrets-encryption: true
+kube-apiserver-arg+:
+  - authentication-config=/etc/rancher/k3s/authn.yaml
+  - audit-policy-file=/etc/rancher/k3s/audit.yaml
+  - audit-log-path=/var/lib/rancher/k3s/server/logs/audit.log
+  - audit-log-maxage=7
+  - audit-log-maxbackup=3
+  - audit-log-maxsize=50
