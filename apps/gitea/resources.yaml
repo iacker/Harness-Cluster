@@ -42,13 +42,21 @@ spec:
             - { name: USER_UID, value: "1000" }
             - { name: USER_GID, value: "1000" }
             - { name: GITEA__database__DB_TYPE, value: "sqlite3" }
-            - { name: GITEA__server__DOMAIN, value: "100.83.189.79" }
-            - { name: GITEA__server__ROOT_URL, value: "http://100.83.189.79:30300/" }
+            - { name: GITEA__server__DOMAIN, value: "gitea.k3s-lab.local" }
+            - { name: GITEA__server__ROOT_URL, value: "https://gitea.k3s-lab.local/" }
             - { name: GITEA__server__SSH_PORT, value: "30022" }
             - { name: GITEA__server__SSH_LISTEN_PORT, value: "22" }
             - { name: GITEA__service__DISABLE_REGISTRATION, value: "true" }
             - { name: GITEA__security__INSTALL_LOCK, value: "true" }
             - { name: GITEA__server__OFFLINE_MODE, value: "true" }
+            # SSO Authentik : inscription uniquement via OIDC, liaison auto au compte existant (preferred_username)
+            - { name: GITEA__service__ALLOW_ONLY_EXTERNAL_REGISTRATION, value: "true" }
+            - { name: GITEA__oauth2_client__ENABLE_AUTO_REGISTRATION, value: "true" }
+            - { name: GITEA__oauth2_client__USERNAME, value: "nickname" }
+            - { name: GITEA__oauth2_client__ACCOUNT_LINKING, value: "auto" }
+            - { name: GITEA__oauth2_client__OPENID_CONNECT_SCOPES, value: "openid email profile" }
+            # Gitea joint Authentik via Traefik (discovery/token) et fait confiance à la CA du lab
+            - { name: SSL_CERT_DIR, value: "/etc/ssl/certs:/lab-ca" }
           ports:
             - { name: http, containerPort: 3000 }
             - { name: ssh, containerPort: 22 }
@@ -57,14 +65,22 @@ spec:
             limits: { cpu: "500m", memory: "512Mi" }
           volumeMounts:
             - { name: data, mountPath: /data }
+            - { name: lab-ca, mountPath: /lab-ca, readOnly: true }
           readinessProbe:
             httpGet: { path: /api/healthz, port: 3000 }
             initialDelaySeconds: 20
             periodSeconds: 10
+      hostAliases:
+        - ip: "10.43.10.141"   # ClusterIP Traefik
+          hostnames: ["auth.k3s-lab.local"]
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: gitea-data
+        - name: lab-ca
+          secret:
+            secretName: gitea-tls
+            items: [{key: ca.crt, path: lab-ca.pem}]
 ---
 apiVersion: v1
 kind: Service
