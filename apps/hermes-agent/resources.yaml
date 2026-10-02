@@ -9,7 +9,7 @@ metadata:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: hermes-data
+  name: hermes-data-node3
   namespace: hermes
 spec:
   accessModes: [ReadWriteOnce]
@@ -37,6 +37,9 @@ spec:
       labels:
         app: hermes
     spec:
+      # Nœud applicatif principal (11 Go) ; volume local-path lié à node3.
+      nodeSelector:
+        kubernetes.io/hostname: node3
       # Le webapp vérifie la gateway par (pid, start_time) : sans espace de
       # processus partagé il la voit « stopped » alors qu'elle tourne.
       shareProcessNamespace: true
@@ -155,7 +158,7 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: hermes-data
+            claimName: hermes-data-node3
         - name: webapp-work
           emptyDir: {}
 ---
