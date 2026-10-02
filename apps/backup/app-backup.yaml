@@ -1,0 +1,87 @@
+---
+# Sauvegarde applicative quotidienne : dumps streamés via l'API (kubectl exec),
+# chiffrés age (clé publique SOPS, privée dans Vault hermes/sops-age) et posés
+# sur le disque de node1, un nœud différent de ceux qui portent les données.
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: app-backup, namespace: backup}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: {name: app-backup-exec}
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list]
+  - apiGroups: [""]
+    resources: [pods/exec]
+    verbs: [create]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: app-backup-exec, namespace: authentik}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: app-backup-exec}
+subjects: [{kind: ServiceAccount, name: app-backup, namespace: backup}]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: app-backup-exec, namespace: gitea}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: app-backup-exec}
+subjects: [{kind: ServiceAccount, name: app-backup, namespace: backup}]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: app-backup-exec, namespace: hermes}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: app-backup-exec}
+subjects: [{kind: ServiceAccount, name: app-backup, namespace: backup}]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: app-backup, namespace: backup}
+data:
+  AGE_RECIPIENT: "age1czdh5vwj9kk5rcmcxj99gj7v20kq7ktj8nlnkjt7sr900r2yguas5kdwpx"
+  backup.sh: |
+    set -eu
+    apk add --no-cache age >/dev/null
+    D=/backups/$(date +%Y%m%d-%H%M); mkdir -p "$D"
+    enc() { age -r "$AGE_RECIPIENT" -o "$D/$1.age"; echo "$1 $(stat -c %s "$D/$1.age") octets"; }
+    kubectl -n authentik exec authentik-postgresql-0 -- sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' | enc authentik.pgdump
+    kubectl -n gitea exec deploy/gitea -- tar czf - -C /data . | enc gitea-data.tgz
+    kubectl -n hermes exec deploy/hermes -c hermes -- tar czf - -C /opt/data --exclude=./cache --exclude=./.cache . | enc hermes-data.tgz
+    find /backups -mindepth 1 -maxdepth 1 -type d -mtime +7 -exec rm -rf {} +
+    echo "OK $D"; ls /backups
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: {name: app-backup, namespace: backup}
+spec:
+  schedule: "30 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 1800
+      backoffLimit: 1
+      template:
+        spec:
+          serviceAccountName: app-backup
+          nodeSelector: {kubernetes.io/hostname: node1}
+          tolerations: [{operator: Exists}]
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: alpine/k8s:1.36.2
+              command: [sh, /scripts/backup.sh]
+              envFrom: [{configMapRef: {name: app-backup}}]
+              resources:
+                requests: {cpu: 20m, memory: 64Mi}
+                limits: {memory: 256Mi}
+              volumeMounts:
+                - {name: scripts, mountPath: /scripts}
+                - {name: out, mountPath: /backups}
+          volumes:
+            - name: scripts
+              configMap: {name: app-backup}
+            - name: out
+              hostPath: {path: /var/backups/k3s-lab-apps, type: DirectoryOrCreate}
