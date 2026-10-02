@@ -1,0 +1,33 @@
+# Certificat signé par la CA interne du lab. Résoudre auth.k3s-lab.local
+# vers l'IP Tailscale d'un nœud (comme grafana/gitea).
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: authentik-tls
+  namespace: authentik
+spec:
+  secretName: authentik-tls
+  duration: 8760h
+  dnsNames: [auth.k3s-lab.local]
+  issuerRef: {name: lab-ca-issuer, kind: ClusterIssuer, group: cert-manager.io}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: authentik
+  namespace: authentik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [auth.k3s-lab.local]
+      secretName: authentik-tls
+  rules:
+    - host: auth.k3s-lab.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: {name: authentik-server, port: {number: 80}}
