@@ -16,6 +16,9 @@ rules:
   - apiGroups: [""]
     resources: [pods/exec]
     verbs: [create]
+  - apiGroups: [apps]
+    resources: [deployments]
+    verbs: [get]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -41,7 +44,7 @@ metadata: {name: app-backup, namespace: backup}
 data:
   AGE_RECIPIENT: "age1czdh5vwj9kk5rcmcxj99gj7v20kq7ktj8nlnkjt7sr900r2yguas5kdwpx"
   backup.sh: |
-    set -eu
+    set -euo pipefail
     apk add --no-cache age >/dev/null
     D=/backups/$(date +%Y%m%d-%H%M); mkdir -p "$D"
     enc() { age -r "$AGE_RECIPIENT" -o "$D/$1.age"; echo "$1 $(stat -c %s "$D/$1.age") octets"; }
