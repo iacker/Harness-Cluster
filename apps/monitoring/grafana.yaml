@@ -103,6 +103,9 @@ spec:
     # dashboards decouverts par le sidecar (label grafana_dashboard=1) :
     # grafana-dashboard-kepler + grafana-dashboard-cost
     sidecar:
+      resources:
+        requests: {cpu: 5m, memory: 48Mi}
+        limits: {memory: 128Mi}
       dashboards:
         enabled: true
         label: grafana_dashboard

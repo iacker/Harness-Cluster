@@ -60,6 +60,9 @@ spec:
           containers:
             - name: backup
               image: alpine:3.20
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 256Mi}
               securityContext:
                 privileged: true
               command:

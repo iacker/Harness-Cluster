@@ -13,7 +13,9 @@ metadata:
     policies.kyverno.io/title: Interdire le tag latest
     policies.kyverno.io/category: Supply Chain
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
+  # Kyverno indisponible => on laisse passer (cluster petit, node1 fragile)
+  failurePolicy: Ignore
   background: true
   rules:
     - name: require-image-tag
@@ -21,6 +23,10 @@ spec:
         any:
           - resources:
               kinds: [Pod]
+      exclude:
+        any:
+          - resources:
+              namespaces: [kube-system]
       validate:
         message: "Une image doit avoir un tag explicite (pas de :latest implicite)."
         pattern:
@@ -36,7 +42,9 @@ metadata:
     policies.kyverno.io/title: Exiger requests/limits
     policies.kyverno.io/category: Reliability
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
+  # Kyverno indisponible => on laisse passer (cluster petit, node1 fragile)
+  failurePolicy: Ignore
   background: true
   rules:
     - name: require-limits
@@ -71,7 +79,9 @@ metadata:
     policies.kyverno.io/title: Exiger runAsNonRoot
     policies.kyverno.io/category: Security
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
+  # Kyverno indisponible => on laisse passer (cluster petit, node1 fragile)
+  failurePolicy: Ignore
   background: true
   rules:
     - name: run-as-non-root

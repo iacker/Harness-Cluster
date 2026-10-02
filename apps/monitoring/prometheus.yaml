@@ -97,6 +97,14 @@ spec:
         limits: {cpu: 100m, memory: 64Mi}
     kube-state-metrics:
       enabled: true           # etat des objets K8s (pods, deploy, ds...)
+      resources:
+        requests: {cpu: 10m, memory: 48Mi}
+        limits: {memory: 192Mi}
+    configmapReload:
+      prometheus:
+        resources:
+          requests: {cpu: 5m, memory: 16Mi}
+          limits: {memory: 48Mi}
     prometheus-node-exporter:
       enabled: true           # metriques hote (cpu/ram/disk/net par noeud)
       # node-exporter a besoin de hostNetwork/hostPID/hostPath -> incompatible
