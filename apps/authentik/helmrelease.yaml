@@ -34,6 +34,8 @@ spec:
       existingSecret:
         secretName: authentik-env
       error_reporting: {enabled: false}
+    blueprints:
+      configMaps: [authentik-blueprints-lab]
     postgresql:
       enabled: false
     server:

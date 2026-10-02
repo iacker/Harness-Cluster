@@ -4,5 +4,6 @@ resources:
   - namespace.yaml
   - secret.sops.yaml
   - postgres.yaml
+  - blueprint-lab-sso.yaml
   - helmrelease.yaml
   - ingress.yaml

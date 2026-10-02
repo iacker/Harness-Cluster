@@ -34,9 +34,12 @@ spec:
         memory: 192Mi
     persistence:
       enabled: false          # dashboards provisionnés depuis Git, pas besoin de PVC
-    # admin/admin par défaut — lab jetable, accès via port-forward uniquement
-    adminUser: admin
-    adminPassword: admin
+    # Compte local = break-glass uniquement (mdp aléatoire, Vault hermes/grafana).
+    # Login normal : SSO Authentik ; formulaire local désactivé.
+    admin:
+      existingSecret: grafana-admin
+      userKey: admin-user
+      passwordKey: admin-password
     # SSO OIDC via Authentik (provider/app "grafana"). L'URL d'autorisation passe
     # par le navigateur (ingress), token/userinfo restent internes au cluster
     # (pas besoin que le pod résolve auth.k3s-lab.local ni fasse confiance à la CA).
@@ -45,6 +48,7 @@ spec:
       server:
         root_url: https://grafana.k3s-lab.local/
       auth:
+        disable_login_form: true
         signout_redirect_url: https://auth.k3s-lab.local/application/o/grafana/end-session/
       auth.generic_oauth:
         enabled: true

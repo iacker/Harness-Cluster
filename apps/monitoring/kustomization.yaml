@@ -10,3 +10,4 @@ resources:
   - ingress.yaml
   - alertmanager-secret.sops.yaml
   - grafana-oidc-secret.sops.yaml
+  - grafana-admin-secret.sops.yaml
