@@ -46,6 +46,17 @@ AUTH = dict(color="#C62828")
 DATA = dict(color="#757575", style="dashed")
 
 
+def legend():
+    """Légende compacte (table HTML Graphviz) : 3 traits, 1 mot chacun."""
+    from diagrams import getdiagram
+    row = lambda c, st, t: (f'<tr><td><font color="{c}" point-size="16">{st}</font></td>'
+                            f'<td align="left"><font point-size="11" color="#555555">{t}</font></td></tr>')
+    html = ('<<table border="1" color="#CCCCCC" cellborder="0" cellspacing="2" cellpadding="3" style="rounded">'
+            + row("#2E7D32", "━━━", "trafic") + row("#C62828", "━━━", "authentification")
+            + row("#757575", "╍╍╍", "données") + '</table>>')
+    getdiagram().dot.node("legend", label=html, shape="plaintext")
+
+
 def kubectl(ctx, *args):
     return json.loads(subprocess.run(["kubectl", "--context", ctx, *args, "-o", "json"],
                                      check=True, capture_output=True, text=True).stdout)["items"]
@@ -79,6 +90,7 @@ def overview(nodes, where, out):
             he, gf, gt = mk("hermes"), mk("grafana"), mk("gitea")
         with Cluster("Observabilité", graph_attr=CLUSTER("#EEF7EE")):
             pr, am = mk("prometheus"), mk("alertmanager")
+        legend()
 
         user >> Edge(label="HTTPS", **HTTP) >> ts >> Edge(label="WireGuard", **HTTP) >> tr
         tr >> Edge(label="forward-auth", constraint="false", **AUTH) >> ak
@@ -100,6 +112,7 @@ def gitops(out):
             ky = Custom("Kyverno", ICON("kyverno"))
             ak = Custom("Authentik", ICON("authentik"))
             apps = Traefik("Apps")
+        legend()
         dev >> Edge(label="git push", **HTTP) >> gh
         vault >> Edge(label="SOPS encrypt", **AUTH) >> gh
         gh >> Edge(label="pull", **HTTP) >> fx

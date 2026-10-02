@@ -14,9 +14,19 @@ Plutôt que de lancer mes agents à la main, je les fais vivre 24/7 sur un clust
 
 ## Le cluster
 
-- **node1**, k3s server / control-plane (Tailscale `100.x.y.1`)
-- **node2**, k3s agent (Tailscale `100.x.y.2`)
-- 2 mini-PC Celeron G3900T, 2 vCPU et 4 Go chacun. Réseau cluster sur Tailscale.
+- **node1**, k3s server / control-plane, 2 vCPU et 4 Go
+- **cloud4dev**, k3s agent, 2 vCPU et 4 Go
+- **node3**, k3s agent, 8 vCPU, 11 Go et NVMe. C'est lui qui porte la plupart des applis.
+
+Les trois machines se parlent par Tailscale, flannel passe sur `tailscale0`.
+
+## Architecture
+
+![Vue d'ensemble](docs/diagrams/k3s-lab-overview.png)
+
+![GitOps et secrets](docs/diagrams/k3s-lab-gitops.png)
+
+Les deux schémas sortent de `docs/diagrams/lab_diagram.py`, qui lit l'état du cluster avec `kubectl`. Je le relance quand quelque chose bouge, comme ça ils restent justes.
 
 ## Ce qui tourne dessus
 
@@ -49,12 +59,9 @@ kubectl create secret generic hermes-secrets  -n hermes  \
 
 ## Accéder aux interfaces
 
-Tout passe par `kubectl port-forward`, l'ingress est en deny-all via NetworkPolicy.
+Chaque UI a son nom en `*.k3s-lab.local` derrière Traefik, avec un certificat de la CA interne. Tout le monde passe par Authentik, MFA obligatoire (YubiKey chez moi). Grafana et Gitea font de l'OIDC natif. Hermes, Prometheus et Alertmanager passent par le forward-auth de Traefik, réservé au groupe `lab-admins`.
 
-```bash
-kubectl -n t3mp3st port-forward svc/t3mp3st    3333:3333   # http://127.0.0.1:3333/ui/
-kubectl -n hermes  port-forward deploy/hermes  9119:9119   # http://127.0.0.1:9119
-```
+Les accès machine (A2A, backups, API k8s, scrapes) restent hors SSO et utilisent des tokens.
 
 ## Mettre en route depuis zéro
 
