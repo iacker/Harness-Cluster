@@ -64,6 +64,7 @@ spec:
     # --- observabilite cluster complete : KSM + node-exporter actives ---
     alertmanager:
       enabled: true
+      nodeSelector: {kubernetes.io/hostname: node3}
       # monter le secret SOPS (token + chat_id) dans le pod alertmanager
       extraSecretMounts:
         - name: telegram
