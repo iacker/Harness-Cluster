@@ -12,3 +12,13 @@ resources:
   - alertmanager-secret.sops.yaml
   - grafana-oidc-secret.sops.yaml
   - grafana-admin-secret.sops.yaml
+# Dashboard dédié Enyo (audit agent Hermes), séparé des dashboards énergie/coût
+configMapGenerator:
+  - name: grafana-dashboard-enyo
+    namespace: monitoring
+    files:
+      - enyo-hermes-audit.json=dashboard-enyo.json
+    options:
+      disableNameSuffixHash: true
+      labels:
+        grafana_dashboard: "1"

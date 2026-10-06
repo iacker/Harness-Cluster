@@ -9,3 +9,16 @@ resources:
   - enyo-github.sops.yaml
 patches:
   - path: observer-deployment-patch.yaml
+# Plugin d'audit Hermes (SQLite) + exporter Prometheus (dashboard monitoring/grafana-dashboard-enyo)
+configMapGenerator:
+  - name: hermes-audit-plugin
+    namespace: hermes
+    files:
+      - audit-plugin/plugin.yaml
+      - audit-plugin/__init__.py
+      - audit-plugin/db.py
+      - audit-plugin/audit_to_db.yaml
+  - name: hermes-audit-exporter
+    namespace: hermes
+    files:
+      - audit-exporter/exporter.py

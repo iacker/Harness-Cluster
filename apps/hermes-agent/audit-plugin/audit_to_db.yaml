@@ -1,0 +1,67 @@
+max_arg_length: 200
+
+tool_args:
+  # Web
+  web_search: query
+  web_extract: urls
+
+  # Browser
+  browser_navigate: url
+  browser_click: ref
+  # browser_type: text  # disabled (may contain secrets/PII)
+  browser_scroll: direction
+  browser_press: key
+  # browser_console: expression  # disabled (may contain secrets/PII)
+  browser_vision: question
+
+  # Terminal
+  terminal: command
+  process: action
+
+  # File
+  read_file: path
+  write_file: path
+  search_files: pattern
+  patch: path
+
+  # Code Execution
+  # execute_code: code  # disabled (may contain secrets/PII)
+
+  # Vision
+  vision_analyze: question
+
+  # TTS
+  # text_to_speech: text  # disabled (may contain secrets/PII)
+
+  # Skills # do not change the name attribute
+  skill_view: name
+  skill_manage: name
+  skills_list: category
+
+  # Memory
+  memory: action
+
+  # Session Search
+  session_search: query
+
+  # Clarify
+  clarify: question
+
+  # Delegation
+  delegate_task: goal
+
+  # Cronjob
+  cronjob: action
+
+  # Messaging
+  send_message: target
+
+  # Home Assistant
+  ha_list_entities: domain
+  ha_get_state: entity_id
+  ha_list_services: domain
+  ha_call_service: service
+
+  # Holographic memory
+  fact_store: action
+  fact_feedback: action

@@ -1,0 +1,6 @@
+name: audit_to_db
+version: 1.0.0
+description: Collect tool calls
+provides_hooks:
+  - post_tool_call
+  - post_api_request

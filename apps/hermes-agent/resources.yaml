@@ -36,6 +36,11 @@ spec:
     metadata:
       labels:
         app: hermes
+      annotations:
+        # scrape par le job kubernetes-pods : sidecar audit-exporter
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9465"
+        prometheus.io/path: /metrics
     spec:
       # Nœud applicatif principal (11 Go) ; volume local-path lié à node3.
       nodeSelector:
@@ -62,6 +67,12 @@ spec:
               # Verrou de build du webapp (/opt/hermes appartient à root dans
               # l'image) : fichier inscriptible monté par subPath.
               touch /work/web_ui_build.lock && chown 10000:10000 /work/web_ui_build.lock
+              # Plugin audit_to_db (code depuis le ConfigMap, data/ conservé).
+              # L'activation (plugins.enabled) est faite une fois dans config.yaml.
+              mkdir -p /opt/data/plugins/audit_to_db/data
+              cp /audit-plugin/plugin.yaml /audit-plugin/__init__.py /audit-plugin/db.py /audit-plugin/audit_to_db.yaml /opt/data/plugins/audit_to_db/
+              chown -R 10000:10000 /opt/data/plugins/audit_to_db
+              chmod 700 /opt/data/plugins/audit_to_db/data
           securityContext:
             runAsUser: 0
           volumeMounts:
@@ -69,6 +80,9 @@ spec:
               mountPath: /opt/data
             - name: webapp-work
               mountPath: /work
+            - name: audit-plugin
+              mountPath: /audit-plugin
+              readOnly: true
           resources:
             requests: {cpu: "10m", memory: "32Mi"}
             limits: {cpu: "100m", memory: "128Mi"}
@@ -155,12 +169,51 @@ spec:
           resources:
             requests: {cpu: "50m", memory: "256Mi"}
             limits: {cpu: "1", memory: "1Gi"}
+        # Lit plugins/audit_to_db/data/audit.db (lecture seule SQLite) et
+        # expose des compteurs Prometheus sur :9465/metrics.
+        - name: audit-exporter
+          image: python:3.12-alpine
+          command: ["python3", "/exporter/exporter.py"]
+          env:
+            - {name: AUDIT_DB, value: /audit/audit.db}
+            - {name: PORT, value: "9465"}
+            - {name: AGENT_NAME, value: enyo}
+          securityContext:
+            runAsUser: 10000
+            runAsGroup: 10000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          ports:
+            - containerPort: 9465
+              name: metrics
+          readinessProbe:
+            httpGet: {path: /metrics, port: 9465}
+            periodSeconds: 30
+          volumeMounts:
+            # rw requis par SQLite WAL (fichier -shm), limité au dossier data
+            - name: data
+              mountPath: /audit
+              subPath: plugins/audit_to_db/data
+            - name: audit-exporter
+              mountPath: /exporter
+              readOnly: true
+          resources:
+            requests: {cpu: "5m", memory: "24Mi"}
+            limits: {memory: "64Mi"}
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: hermes-data-node3
         - name: webapp-work
           emptyDir: {}
+        - name: audit-plugin
+          configMap:
+            name: hermes-audit-plugin
+        - name: audit-exporter
+          configMap:
+            name: hermes-audit-exporter
 ---
 apiVersion: v1
 kind: Service
@@ -205,5 +258,12 @@ spec:
     - ports:
         - {protocol: TCP, port: 9900}
         - {protocol: TCP, port: 9119}
+    # Prometheus (namespace monitoring) scrape l'audit-exporter
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - {protocol: TCP, port: 9465}
   egress:
     - {}
