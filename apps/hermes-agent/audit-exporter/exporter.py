@@ -1,9 +1,9 @@
 """Prometheus exporter for the Hermes audit_to_db plugin (stdlib only).
 
 Reads <plugin>/data/audit.db read-only and turns rows into counters.
-Counters are kept in memory and only grow with new row ids, so pruning old
-rows never makes a counter go down. A restart resets them (Prometheus
-handles counter resets in rate()/increase()).
+Counters start at 0 from the DB's current last row (no re-count of history
+after a restart) and only grow with new row ids, so pruning old rows never
+makes a counter go down. A restart is a normal counter reset for Prometheus.
 """
 import calendar
 import os
@@ -16,6 +16,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 DB = os.environ.get("AUDIT_DB", "/audit/audit.db")
 PORT = int(os.environ.get("PORT", "9465"))
 AGENT = os.environ.get("AGENT_NAME", "enyo")
+HOLD = float(os.environ.get("NEW_SERIES_HOLD_S", "90"))  # > 2x scrape_interval (30s)
+first_seen = {}
 
 lock = threading.Lock()
 last = {"api": 0, "tool": 0}
@@ -41,9 +43,16 @@ def ts(s):
 def refresh():
     if not os.path.exists(DB):
         state["up"] = 0
+        state["init"] = True  # fresh install: every future row is new
         return
     try:
         c = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=5)
+        if not state.get("init"):
+            # Start at 0 from the current end of the DB: re-counting history after
+            # a pod restart would show up as a fake consumption spike in increase().
+            last["api"] = c.execute("select coalesce(max(id),0) from api_calls").fetchone()[0]
+            last["tool"] = c.execute("select coalesce(max(id),0) from tool_calls").fetchone()[0]
+            state["init"] = True
         api = c.execute(
             "select id,timestamp,session_id,coalesce(provider,'?'),coalesce(model,'?'),"
             "coalesce(platform,'?'),coalesce(finish_reason,'?'),api_duration,"
@@ -79,7 +88,13 @@ def esc(v):
 
 def fmt(name, kind, help_, data, keys):
     out = [f"# HELP {name} {help_}", f"# TYPE {name} {kind}"]
+    now = time.time()
     for k, v in sorted(data.items()):
+        # A brand new series is published at 0 for HOLD seconds first, so that
+        # Prometheus sees 0 -> N and increase() counts the very first events.
+        born = first_seen.setdefault((name, k), now)
+        if kind == "counter" and now - born < HOLD:
+            v = 0
         lbl = ",".join(f'{n}="{esc(x)}"' for n, x in zip(keys, k))
         lbl = f'agent="{AGENT}"' + ("," + lbl if lbl else "")
         out.append(f"{name}{{{lbl}}} {v}")
