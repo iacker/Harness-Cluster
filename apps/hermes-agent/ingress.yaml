@@ -25,3 +25,25 @@ spec:
       http:
         paths:
           - {path: /, pathType: Prefix, backend: {service: {name: hermes, port: {number: 9119}}}}
+---
+# Accès tailnet : `tailscale serve` sur node1 (TLS Let's Encrypt du tailnet)
+# -> Traefik :80 de node1 -> hermes. Pas de proxy direct vers le ClusterIP :
+# les paquets de tailscaled portent le fwmark 0x80000, que flannel (VXLAN sur
+# tailscale0) recopie sur le paquet encapsulé, routé alors hors tailnet et
+# perdu dès que le pod n'est pas sur node1. En passant par un pod local (svclb),
+# le mark est effacé au changement de netns.
+# Auth : OAuth du dashboard Hermes (HERMES_DASHBOARD_PUBLIC_URL), tailnet only.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hermes-tailnet
+  namespace: hermes
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: node1.tailff2e6.ts.net
+      http:
+        paths:
+          - {path: /, pathType: Prefix, backend: {service: {name: hermes, port: {number: 9119}}}}
