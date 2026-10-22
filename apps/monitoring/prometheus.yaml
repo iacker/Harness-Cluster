@@ -179,6 +179,32 @@ spec:
                 labels: {severity: warning}
                 annotations:
                   description: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} <10% libre."
+              - alert: NodeDiskAlmostFull
+                expr: |
+                  (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"}
+                     / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"}) > 0.85
+                for: 15m
+                labels: {severity: warning}
+                annotations:
+                  description: "Disque {{ $labels.mountpoint }} sur {{ $labels.instance }} plein a {{ $value | humanizePercentage }}."
+              - alert: ScrapeTargetDown
+                expr: up{job!="azure-vm"} == 0
+                for: 10m
+                labels: {severity: warning}
+                annotations:
+                  description: "Cible {{ $labels.job }} / {{ $labels.instance }} injoignable depuis 10min."
+              - alert: CertificateExpiringSoon
+                expr: certmanager_certificate_expiration_timestamp_seconds - time() < 14 * 86400
+                for: 1h
+                labels: {severity: warning}
+                annotations:
+                  description: "Certificat {{ $labels.namespace }}/{{ $labels.name }} expire dans moins de 14 jours."
+              - alert: ServiceProbeFailed
+                expr: probe_success{job=~"blackbox-.*"} == 0
+                for: 5m
+                labels: {severity: critical}
+                annotations:
+                  description: "{{ $labels.instance }} ne repond plus correctement depuis 5min."
     extraScrapeConfigs: |
       # Kepler est un DaemonSet : scraper via le Service ClusterIP ne touchait
       # qu'UN des deux pods (LB round-robin fige la cible), donc node1
@@ -216,3 +242,35 @@ spec:
             regex: (.+)
             target_label: __metrics_path__
             replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+      # Sondes HTTP internes au cluster (blackbox-exporter, voir blackbox.yaml)
+      - job_name: blackbox-http
+        scrape_interval: 60s
+        metrics_path: /probe
+        params:
+          module: [http_2xx]
+        static_configs:
+          - targets:
+              - https://gitea.k3s-lab.local/api/healthz
+              - https://auth.k3s-lab.local/-/health/live/
+              - https://grafana.k3s-lab.local/api/health
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: blackbox-prometheus-blackbox-exporter.monitoring.svc:9115
+      - job_name: blackbox-hermes
+        scrape_interval: 60s
+        metrics_path: /probe
+        params:
+          module: [http_302]
+        static_configs:
+          - targets: [http://hermes.hermes.svc:9119/]
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: blackbox-prometheus-blackbox-exporter.monitoring.svc:9115

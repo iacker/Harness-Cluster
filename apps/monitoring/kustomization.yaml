@@ -2,6 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - prometheus.yaml
+  - blackbox.yaml
   - dashboard-configmap.yaml
   - dashboard-cost-configmap.yaml
   - grafana.yaml
