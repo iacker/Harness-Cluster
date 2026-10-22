@@ -9,8 +9,7 @@ spec:
   interval: 1m0s
   ref:
     branch: main
-  secretRef:
-    name: flux-system
+  # repo public depuis le 22/10/2026: pas d'identifiants
   url: https://github.com/iacker/Harness-Cluster.git
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
