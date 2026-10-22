@@ -101,7 +101,6 @@ spec:
               namespaces:
                 - kepler
                 - monitoring-system
-                - logging
                 - system-upgrade
                 - backup
                 - kube-system
