@@ -45,14 +45,12 @@ spec:
       # Nœud applicatif principal (11 Go) ; volume local-path lié à node3.
       nodeSelector:
         kubernetes.io/hostname: node3
-      # Le webapp vérifie la gateway par (pid, start_time) : sans espace de
+      # Le dashboard vérifie la gateway par (pid, start_time) : sans espace de
       # processus partagé il la voit « stopped » alors qu'elle tourne.
       shareProcessNamespace: true
-      imagePullSecrets:
-        - name: ghcr-pull
       initContainers:
         - name: fix-data-permissions
-          image: nousresearch/hermes-agent:v2026.8.3
+          image: nousresearch/hermes-agent:v0.22.4
           command: ["sh", "-c"]
           args:
             - |
@@ -64,7 +62,7 @@ spec:
               chown -R 10000:10000 /opt/data
               [ -f /opt/data/auth.json ] && chmod 600 /opt/data/auth.json || true
               chmod 700 /opt/data/logs
-              # Verrou de build du webapp (/opt/hermes appartient à root dans
+              # Verrou de build du dashboard (/opt/hermes appartient à root dans
               # l'image) : fichier inscriptible monté par subPath.
               touch /work/web_ui_build.lock && chown 10000:10000 /work/web_ui_build.lock
               # Plugin audit_to_db (code depuis le ConfigMap, data/ conservé).
@@ -88,10 +86,12 @@ spec:
             limits: {cpu: "100m", memory: "128Mi"}
       containers:
         - name: hermes
-          image: ghcr.io/iacker/hermes-agent:desktop-web-93508
-          imagePullPolicy: Always
-          args: ["webapp", "--host", "0.0.0.0", "--port", "9119", "--no-open", "--skip-build"]
-          # Même uid que la gateway : un webapp root réécrivait auth.json et
+          # Image officielle (dashboard + chat /chat, OAuth Nous). L'ancienne image
+          # perso desktop-web (PR #93508, jamais mergée) a été abandonnée le 22/10/2026.
+          image: nousresearch/hermes-agent:v0.22.4
+          imagePullPolicy: IfNotPresent
+          args: ["dashboard", "--host", "0.0.0.0", "--port", "9119", "--no-open", "--skip-build"]
+          # Même uid que la gateway : un dashboard root réécrivait auth.json et
           # les verrous cron en root, illisibles pour la gateway.
           securityContext:
             runAsUser: 10000
@@ -112,7 +112,7 @@ spec:
           ports:
             - containerPort: 9119
               name: gateway
-          # Auto-réparation : un webapp figé est redémarré par le kubelet.
+          # Auto-réparation : un dashboard figé est redémarré par le kubelet.
           readinessProbe:
             httpGet: {path: /api/status, port: 9119}
             periodSeconds: 20
@@ -132,13 +132,13 @@ spec:
           resources:
             requests: {cpu: "100m", memory: "384Mi"}
             limits: {cpu: "1", memory: "1Gi"}
-        # Gateway (plateformes, dont A2A :9900) : `webapp` ne charge AUCUNE
-        # plateforme, l'A2A était mort depuis le passage à l'image desktop-web.
+        # Gateway (plateformes, dont A2A :9900) : le dashboard ne charge AUCUNE
+        # plateforme, la gateway tourne donc dans son propre conteneur.
         # Même image et même HERMES_HOME, rôle séparé. Le port 9900 est porté
         # par ce conteneur ; le Service hermes-a2a (NodePort 30900) le cible.
         - name: gateway
-          image: ghcr.io/iacker/hermes-agent:desktop-web-93508
-          imagePullPolicy: Always
+          image: nousresearch/hermes-agent:v0.22.4
+          imagePullPolicy: IfNotPresent
           args: ["gateway", "run", "--replace"]
           # L'image refuse (à raison) une gateway root : on la lance
           # directement sous l'utilisateur hermes, comme le ferait l'entrypoint.
