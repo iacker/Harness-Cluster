@@ -129,6 +129,10 @@ spec:
             - name: webapp-work
               mountPath: /opt/hermes/.web_ui_build.lock
               subPath: web_ui_build.lock
+            # Hors PID 1 (pause du shareProcessNamespace), le bootstrap de l'image
+            # écrit dans /run/s6 : non inscriptible en uid 10000 sans ce volume.
+            - name: s6-run
+              mountPath: /run/s6
           resources:
             requests: {cpu: "100m", memory: "384Mi"}
             limits: {cpu: "1", memory: "1Gi"}
@@ -166,6 +170,8 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /opt/data
+            - name: s6-run
+              mountPath: /run/s6
           resources:
             requests: {cpu: "50m", memory: "256Mi"}
             limits: {cpu: "1", memory: "1Gi"}
@@ -203,6 +209,8 @@ spec:
             requests: {cpu: "5m", memory: "24Mi"}
             limits: {memory: "64Mi"}
       volumes:
+        - name: s6-run
+          emptyDir: {}
         - name: data
           persistentVolumeClaim:
             claimName: hermes-data-node3
