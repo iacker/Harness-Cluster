@@ -163,6 +163,13 @@ spec:
               value: /opt/data
             - name: A2A_HOST
               value: "0.0.0.0"
+            # Depuis v0.22, un bind non-loopback refuse tout dispatch sans liste
+            # de pairs de confiance. Le jeton partagé (A2A_BEARER_TOKEN, SOPS) est
+            # nommé « ares » : identité stable malgré le SNAT du NodePort.
+            - name: A2A_PEER_TOKENS
+              value: "ares:$(A2A_BEARER_TOKEN)"
+            - name: A2A_TRUSTED_PEERS
+              value: "ares"
           envFrom:
             - secretRef: {name: hermes-secrets}
             - secretRef: {name: htb-token, optional: true}
