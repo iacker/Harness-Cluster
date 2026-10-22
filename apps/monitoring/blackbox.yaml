@@ -1,6 +1,7 @@
 ---
-# Sondes HTTP "vues de l'utilisateur" : passent par Traefik (hostAliases ->
-# ClusterIP Traefik), comme un vrai navigateur. Trafic 100 % interne au cluster.
+# Sondes HTTP "vues de l'utilisateur" : passent par Traefik
+# (traefik.kube-system.svc + parametre ?hostname= pour le Host/SNI), comme un
+# vrai navigateur. Trafic 100 % interne au cluster.
 # Ne JAMAIS sonder les URL publiques Azure d'ici : chaque reponse serait de
 # l'egress facture cote Azure.
 apiVersion: helm.toolkit.fluxcd.io/v2
@@ -30,12 +31,6 @@ spec:
     resources:
       requests: {cpu: 10m, memory: 24Mi}
       limits: {cpu: 100m, memory: 64Mi}
-    hostAliases:
-      - ip: 10.43.10.141          # svc traefik.kube-system (ClusterIP)
-        hostnames:
-          - gitea.k3s-lab.local
-          - auth.k3s-lab.local
-          - grafana.k3s-lab.local
     config:
       modules:
         http_2xx:

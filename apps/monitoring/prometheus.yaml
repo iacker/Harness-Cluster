@@ -248,15 +248,18 @@ spec:
         metrics_path: /probe
         params:
           module: [http_2xx]
+        # __param_hostname = Host + SNI envoyes a Traefik
         static_configs:
-          - targets:
-              - https://gitea.k3s-lab.local/api/healthz
-              - https://auth.k3s-lab.local/-/health/live/
-              - https://grafana.k3s-lab.local/api/health
+          - targets: [https://traefik.kube-system.svc/api/healthz]
+            labels: {__param_hostname: gitea.k3s-lab.local}
+          - targets: [https://traefik.kube-system.svc/-/health/live/]
+            labels: {__param_hostname: auth.k3s-lab.local}
+          - targets: [https://traefik.kube-system.svc/api/health]
+            labels: {__param_hostname: grafana.k3s-lab.local}
         relabel_configs:
           - source_labels: [__address__]
             target_label: __param_target
-          - source_labels: [__param_target]
+          - source_labels: [__param_hostname]
             target_label: instance
           - target_label: __address__
             replacement: blackbox-prometheus-blackbox-exporter.monitoring.svc:9115
