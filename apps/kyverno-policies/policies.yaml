@@ -52,6 +52,11 @@ spec:
         any:
           - resources:
               kinds: [Pod]
+      # jobs d'upgrade k3s generes par system-upgrade-controller (pas de limits configurables)
+      exclude:
+        any:
+          - resources:
+              namespaces: [system-upgrade]
       validate:
         # On exige uniquement la limite MEMOIRE. Une limite CPU est un cap dur
         # applique par le CFS: le pod est throttle meme quand le noeud a du CPU
