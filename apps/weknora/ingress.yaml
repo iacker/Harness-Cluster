@@ -1,0 +1,35 @@
+# weknora.k3s-lab.local -> frontend (nginx qui proxifie /api vers app).
+# Derrière le forward-auth Authentik (lab-admins), en plus du login WeKnora :
+# l'inscription WeKnora est en self_serve par défaut.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: weknora-tls
+  namespace: weknora
+spec:
+  secretName: weknora-tls
+  duration: 8760h
+  dnsNames: [weknora.k3s-lab.local]
+  issuerRef: {name: lab-ca-issuer, kind: ClusterIssuer, group: cert-manager.io}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: weknora
+  namespace: weknora
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.middlewares: authentik-ak-forward-auth@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [weknora.k3s-lab.local]
+      secretName: weknora-tls
+  rules:
+    - host: weknora.k3s-lab.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: {name: frontend, port: {number: 80}}

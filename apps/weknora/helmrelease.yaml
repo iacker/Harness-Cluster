@@ -1,0 +1,56 @@
+# WeKnora (Tencent) : plateforme RAG. Le chart n'est pas publié dans un repo Helm,
+# Flux le lit directement dans le dépôt upstream, épinglé sur le tag de release.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: weknora
+  namespace: weknora
+spec:
+  interval: 24h
+  url: https://github.com/Tencent/WeKnora
+  ref: {tag: v0.8.3}
+  ignore: |
+    /*
+    !/helm/
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: weknora
+  namespace: weknora
+spec:
+  interval: 30m
+  timeout: 15m
+  chart:
+    spec:
+      chart: ./helm
+      sourceRef: {kind: GitRepository, name: weknora}
+  install:
+    remediation: {retries: 3}
+  upgrade:
+    remediation: {retries: 3}
+  values:
+    secrets:
+      existingSecret: weknora-secrets
+    app:
+      nodeSelector: {kubernetes.io/hostname: node3}
+      resources:
+        requests: {cpu: 100m, memory: 256Mi}
+        limits: {cpu: "1", memory: 1Gi}
+    frontend:
+      nodeSelector: {kubernetes.io/hostname: node3}
+    docreader:
+      nodeSelector: {kubernetes.io/hostname: node3}
+      # LibreOffice + Playwright : 512Mi (défaut chart) OOM sur les gros PDF/DOCX.
+      resources:
+        requests: {cpu: 200m, memory: 512Mi}
+        limits: {cpu: "2", memory: 2Gi}
+    postgresql:
+      nodeSelector: {kubernetes.io/hostname: node3}
+      # Le chart pinne encore paradedb v0.18.9 ; docker-compose v0.8.3 utilise v0.25.11.
+      image: {tag: v0.25.11-pg17}
+      resources:
+        requests: {cpu: 100m, memory: 256Mi}
+        limits: {cpu: "1", memory: 1Gi}
+    redis:
+      nodeSelector: {kubernetes.io/hostname: node3}

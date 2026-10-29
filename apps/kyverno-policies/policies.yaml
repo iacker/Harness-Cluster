@@ -104,6 +104,8 @@ spec:
                 - system-upgrade
                 - backup
                 - kube-system
+                # images officielles WeKnora/ParadeDB/Redis root (cf. helm/values.yaml upstream)
+                - weknora
       validate:
         message: "Les conteneurs devraient tourner en runAsNonRoot: true."
         pattern:
