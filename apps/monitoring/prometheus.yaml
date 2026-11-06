@@ -48,7 +48,7 @@ spec:
   chart:
     spec:
       chart: prometheus
-      version: "29.23.0"
+      version: "29.44.0"
       sourceRef:
         kind: HelmRepository
         name: prometheus-community
@@ -64,6 +64,11 @@ spec:
     # --- observabilite cluster complete : KSM + node-exporter actives ---
     alertmanager:
       enabled: true
+      # chart >=29.3x : sidecar configmap-reload active par defaut -> ressources pour Kyverno require-resource-limits
+      configmapReload:
+        resources:
+          requests: {cpu: 5m, memory: 16Mi}
+          limits: {memory: 64Mi}
       nodeSelector: {kubernetes.io/hostname: node3}
       # monter le secret SOPS (token + chat_id) dans le pod alertmanager
       extraSecretMounts:

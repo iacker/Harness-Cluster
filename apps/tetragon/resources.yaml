@@ -22,9 +22,27 @@ spec:
   chart:
     spec:
       chart: tetragon
-      version: "1.7.1"
+      version: "1.8.0"
       sourceRef: {kind: HelmRepository, name: cilium}
   install: {remediation: {retries: 3}}
+  # tetragon 1.8 ajoute l'init container mount-bpf-fs sans ressources ni value pour les fixer
+  # -> patch post-rendu pour Kyverno require-resource-limits (Enforce)
+  postRenderers:
+    - kustomize:
+        patches:
+          - target: {kind: DaemonSet, name: tetragon}
+            patch: |
+              apiVersion: apps/v1
+              kind: DaemonSet
+              metadata: {name: tetragon}
+              spec:
+                template:
+                  spec:
+                    initContainers:
+                      - name: mount-bpf-fs
+                        resources:
+                          requests: {cpu: 10m, memory: 16Mi}
+                          limits: {memory: 64Mi}
   upgrade: {remediation: {retries: 3}}
   values:
     tetragon:
