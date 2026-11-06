@@ -153,6 +153,8 @@ spec:
           ports:
             - containerPort: 9900
               name: a2a
+            - containerPort: 8642
+              name: api
           livenessProbe:
             tcpSocket: {port: 9900}
             initialDelaySeconds: 90
@@ -171,6 +173,10 @@ spec:
               value: "ares:$(A2A_BEARER_TOKEN)"
             - name: A2A_TRUSTED_PEERS
               value: "ares"
+            # API server (8642) = transport de `hermes peer` (bot-to-bot entre
+            # machines). Protégé par API_SERVER_KEY (64 car., /opt/data/.env).
+            - name: API_SERVER_HOST
+              value: "0.0.0.0"
           envFrom:
             - secretRef: {name: hermes-secrets}
             - secretRef: {name: htb-token, optional: true}
@@ -259,6 +265,10 @@ spec:
       targetPort: 9900
       nodePort: 30900
       name: a2a
+    - port: 8642
+      targetPort: 8642
+      nodePort: 30642
+      name: api
   type: NodePort
 ---
 apiVersion: networking.k8s.io/v1
@@ -274,6 +284,7 @@ spec:
   ingress:
     - ports:
         - {protocol: TCP, port: 9900}
+        - {protocol: TCP, port: 8642}
         - {protocol: TCP, port: 9119}
     # Prometheus (namespace monitoring) scrape l'audit-exporter
     - from:
