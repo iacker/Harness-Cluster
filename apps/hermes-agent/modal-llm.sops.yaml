@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: modal-llm
+    namespace: hermes
+type: Opaque
+stringData:
+    MODAL_LLM_API_KEY: ENC[AES256_GCM,data:HQMjrYz/cng8yMy4wuwUtOYGIBu7Hmv0E6GQ2T50IxE=,iv:04ytNWh1H/MH/gn5hhvBP9vclvHC9iBlw2+3eb4dzRA=,tag:j3VAKZZyvYr3fRxcSqmxwA==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA5YVVDenlXT0FmYkxvWXRN
+            K3hWZlVkOXNUdWszUzBzcnhDVkFuS0ovUzJRClpDUXV1d3hBMFllcjY1b28ySkdV
+            Z01aSVdia05ES0dwRURUZ0RscGhGNGsKLS0tIGt0V3poMnVCYkN6K2RJWUxuSkNN
+            M2dVK1JLT1NJQWpSOE1BVHpBZk9BRDgKI5zrrw81CH1P3gZUD3AQr0WmlxTz3sgc
+            qB3WPdJrr6iiARIPRaCBb69WCsXg7Onaizowhk6HW4wYvpChKFrV0Q==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1czdh5vwj9kk5rcmcxj99gj7v20kq7ktj8nlnkjt7sr900r2yguas5kdwpx
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-11-06T18:57:10Z"
+    mac: ENC[AES256_GCM,data:Ubod080oLPWzESaSikuf9oQZsn0XtKlAVD2JFE9q3HmcfUbDlivuP1uOZRfz/dE4U5U++/B9YB/TuQc0WCFWZbQx9H4QJHSjPRDg7ou7z5ZwCWtTRPLh9mwNynSn1mAhxZbGNcJr1RUF+j7G5cwb7uM3NMN1wzsZF6Yil7RTWew=,iv:U8HfrP0Cjed60POL1dwvX/cbJSK3I7gxNaudyMC2owU=,tag:mg77iCtymSsRH+FK55CeyQ==,type:str]
+    version: 3.13.3
