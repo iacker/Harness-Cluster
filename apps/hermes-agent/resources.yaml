@@ -187,9 +187,11 @@ spec:
               mountPath: /opt/data
             - name: s6-run
               mountPath: /run/s6
+          # 1Gi : OOMKilled le 09/11 sous un run peer Kaggle (pip + calcul kickmix
+          # dans le process gateway). 3Gi / 2 CPU, node3 a ~6Gi libres.
           resources:
-            requests: {cpu: "50m", memory: "256Mi"}
-            limits: {cpu: "1", memory: "1Gi"}
+            requests: {cpu: "100m", memory: "512Mi"}
+            limits: {cpu: "2", memory: "3Gi"}
         # Lit plugins/audit_to_db/data/audit.db (lecture seule SQLite) et
         # expose des compteurs Prometheus sur :9465/metrics.
         - name: audit-exporter
