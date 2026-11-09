@@ -110,6 +110,7 @@ spec:
             - secretRef: {name: htb-token, optional: true}
             - secretRef: {name: enyo-github, optional: true}
             - secretRef: {name: modal-llm, optional: true}
+            - secretRef: {name: kaggle-api, optional: true}
           ports:
             - containerPort: 9119
               name: gateway
@@ -182,6 +183,7 @@ spec:
             - secretRef: {name: htb-token, optional: true}
             - secretRef: {name: enyo-github, optional: true}
             - secretRef: {name: modal-llm, optional: true}
+            - secretRef: {name: kaggle-api, optional: true}
           volumeMounts:
             - name: data
               mountPath: /opt/data

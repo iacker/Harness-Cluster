@@ -9,6 +9,7 @@ resources:
   - secret.sops.yaml
   - enyo-github.sops.yaml
   - modal-llm.sops.yaml
+  - kaggle-api.sops.yaml
 patches:
   - path: observer-deployment-patch.yaml
 # Plugin d'audit Hermes (SQLite) + exporter Prometheus (dashboard monitoring/grafana-dashboard-enyo)
