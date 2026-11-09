@@ -44,6 +44,13 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /opt/data
+            # L'interpréteur du venv est installé à l'exécution dans le
+            # conteneur gateway (absent de l'image) : copie sur le PVC,
+            # remontée au chemin attendu par venv/bin/python3.14.
+            - name: data
+              mountPath: /opt/hermes/tools/python-3.14.9+20261021-linux-x64
+              subPath: work/kaggle-qcc/py314
+              readOnly: true
           resources:
             requests: {cpu: "500m", memory: "1Gi"}
             limits: {cpu: "2", memory: "4Gi"}
