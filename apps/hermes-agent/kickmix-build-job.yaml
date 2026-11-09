@@ -1,0 +1,53 @@
+# Compile kickmix (extension C++ de qualtran, ~180 fichiers .cc en -O3) hors
+# du conteneur gateway d'Ényo : la compilation parallèle (pybind11
+# ParallelCompile = 8 g++ sur node3) l'a OOMKilled 3 fois le 09/11/2026.
+# Même image (même ABI Python 3.14), même PVC, build limité à 2 jobs.
+# Idempotent : sort tout de suite si kickmix s'importe déjà dans le venv.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kickmix-build
+  namespace: hermes
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        kubernetes.io/hostname: node3
+      securityContext:
+        runAsUser: 10000
+        runAsGroup: 10000
+      containers:
+        - name: build
+          image: nousresearch/hermes-agent:v0.22.4
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              W=/opt/data/work/kaggle-qcc
+              cd "$W"
+              if venv/bin/python -c 'import kickmix' 2>/dev/null; then
+                echo "kickmix déjà installé"; exit 0
+              fi
+              mkdir -p wheels logs
+              venv/bin/pip wheel --no-build-isolation --no-deps -w wheels ./qualtran/kickmix \
+                > logs/build_kickmix_job.log 2>&1
+              venv/bin/pip install --no-deps --no-index wheels/kickmix-*.whl >> logs/build_kickmix_job.log 2>&1
+              venv/bin/python -c 'import kickmix; print("KICKMIX_OK", kickmix.__file__)' | tee -a logs/build_kickmix_job.log
+          env:
+            - name: NPY_NUM_BUILD_JOBS
+              value: "2"
+            - name: TMPDIR
+              value: /opt/data/cache/scratch
+          volumeMounts:
+            - name: data
+              mountPath: /opt/data
+          resources:
+            requests: {cpu: "500m", memory: "1Gi"}
+            limits: {cpu: "2", memory: "4Gi"}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: hermes-data-node3

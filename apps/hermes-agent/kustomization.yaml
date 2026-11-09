@@ -4,6 +4,7 @@ resources:
   - resources.yaml
   - ingress.yaml
   - enyo-cron.yaml
+  - kickmix-build-job.yaml
   - observer-rbac.yaml
   - secret.sops.yaml
   - enyo-github.sops.yaml
