@@ -194,6 +194,39 @@ spec:
           resources:
             requests: {cpu: "1", memory: "2Gi"}
             limits: {cpu: "6", memory: "6Gi"}
+        # Proxy LLM Nous pour Hindsight (namespace hindsight) : réutilise la session
+        # Nous Portal d'Ényo (cle d'agent OAuth, 1 h) via le resolveur Hermes.
+        # Jeton partagé, modèle forcé, coût journalisé dans /opt/data/logs.
+        - name: nous-proxy
+          image: nousresearch/hermes-agent:v0.23.1
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/hermes/.venv/bin/python", "/proxy/nous_proxy.py"]
+          securityContext:
+            runAsUser: 10000
+            runAsGroup: 10000
+          env:
+            - name: HERMES_HOME
+              value: /opt/data
+            - name: PYTHONPATH
+              value: /opt/hermes
+            - name: NOUS_PROXY_MODEL
+              value: deepseek/deepseek-v4.1-flash
+          envFrom:
+            - secretRef: {name: nous-proxy}
+          ports:
+            - containerPort: 8651
+              name: nous-proxy
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8651}
+            periodSeconds: 30
+          volumeMounts:
+            - name: data
+              mountPath: /opt/data
+            - name: nous-proxy
+              mountPath: /proxy
+          resources:
+            requests: {cpu: "10m", memory: "64Mi"}
+            limits: {cpu: "500m", memory: "256Mi"}
         # Lit plugins/audit_to_db/data/audit.db (lecture seule SQLite) et
         # expose des compteurs Prometheus sur :9465/metrics.
         - name: audit-exporter
@@ -241,6 +274,9 @@ spec:
         - name: audit-exporter
           configMap:
             name: hermes-audit-exporter
+        - name: nous-proxy
+          configMap:
+            name: hermes-nous-proxy
 ---
 apiVersion: v1
 kind: Service
@@ -297,5 +333,26 @@ spec:
               kubernetes.io/metadata.name: monitoring
       ports:
         - {protocol: TCP, port: 9465}
+    # Hindsight (mémoire d'Ényo) appelle le proxy Nous
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: hindsight
+      ports:
+        - {protocol: TCP, port: 8651}
   egress:
     - {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hermes-nous-proxy
+  namespace: hermes
+spec:
+  selector:
+    app: hermes
+  ports:
+    - port: 8651
+      targetPort: 8651
+      name: nous-proxy
+  type: ClusterIP

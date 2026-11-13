@@ -1,6 +1,6 @@
 # Hindsight (vectorize-io) : mémoire long terme d'Ényo (banque `enyo`).
 # Image complète : embeddings + reranker locaux, seul le LLM d'extraction est externe
-# (Mistral, même clé que le Hindsight du Mac). Auth par clé API (tenant extension).
+# (Nous Portal via nous-proxy). Auth par clé API (tenant extension).
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
@@ -61,8 +61,9 @@ spec:
         modelCache: {enabled: true, size: 3Gi}
       env:
         HINDSIGHT_API_LLM_PROVIDER: openai
-        HINDSIGHT_API_LLM_BASE_URL: https://api.mistral.ai/v1
-        HINDSIGHT_API_LLM_MODEL: mistral-small-latest
+        # LLM = Nous Portal via le sidecar nous-proxy du pod hermes (session OAuth d'Ényo)
+        HINDSIGHT_API_LLM_BASE_URL: http://hermes-nous-proxy.hermes.svc.cluster.local:8651/v1
+        HINDSIGHT_API_LLM_MODEL: deepseek/deepseek-v4.1-flash
         HINDSIGHT_API_TENANT_EXTENSION: hindsight_api.extensions.builtin.tenant:ApiKeyTenantExtension
         HINDSIGHT_API_RETAIN_MAX_COMPLETION_TOKENS: "8000"
         HINDSIGHT_API_CONSOLIDATION_MAX_COMPLETION_TOKENS: "8000"

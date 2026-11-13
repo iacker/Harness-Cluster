@@ -1,0 +1,24 @@
+# Jeton du proxy Nous (sidecar nous-proxy) utilisé par Hindsight. Source : Vault hermes/hindsight-enyo.
+apiVersion: v1
+kind: Secret
+metadata:
+    name: nous-proxy
+    namespace: hermes
+type: Opaque
+stringData:
+    NOUS_PROXY_TOKEN: ENC[AES256_GCM,data:vFHqbS7CgEgKnA1ljEdGwXSJkCDxb57ShH1d/8tV32a+kFqWf9LghNnUOkh0CkIDps9V4+QHBrl1rOS5FCrvKQ==,iv:79koz69LcJtC9DTCLsPUykPOVsIRs8MBrGb6EKxdkZk=,tag:ziKwDKvf9deDZjLkMBl68w==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBBL2xNVCtiRlkwdDdmM1B5
+            QjZ5aEN4b1FnYmlxeDlXSXhPdVI3WXlJNlZVCm1pZTkvVkk4eS9lbkRYQllHbVVu
+            cXFNbGw0Y1BUQlJPQm5ETFE4NS9sZEkKLS0tIGpTNWRZeTBvNjZ0TjRJcGNBZnFx
+            WlBucHpEbnRybEYzbzhjRDJwdVhIZWcKNdaIEsrGaKVZRd1Kn0MToeQ/9nBix1hI
+            pdwry3EdYwE9VFSRaJw0mOZj2q/uEZRvDVM28VwKhVOg4Yo0tckXLQ==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1czdh5vwj9kk5rcmcxj99gj7v20kq7ktj8nlnkjt7sr900r2yguas5kdwpx
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-11-13T21:27:44Z"
+    mac: ENC[AES256_GCM,data:ER5u+E8E2aDHMsxBAASXLfNpSBrZ6/rHh5Ec7rOFbFYNdb95Ko6hYyQkF70m7ie1z0sDEnxJ0/JNlSgXzgthSQMNLNyacz8CYi/Azyh8j44KgpYaU7wPrJvA+M7J1O4RN4W3P8JzTye3k2e6quHhZ3BKLhqlIRCA3EEHZKm33S4=,iv:85zmS5df0d8z2AiZQO+pzuMgzxNaFCR5RmKpSKBTWYs=,tag:OmIfNGBlz7JHrs7vyDOU5w==,type:str]
+    version: 3.13.3

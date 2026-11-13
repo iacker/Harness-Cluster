@@ -10,6 +10,7 @@ resources:
   - enyo-github.sops.yaml
   - modal-llm.sops.yaml
   - kaggle-api.sops.yaml
+  - nous-proxy.sops.yaml
 patches:
   - path: observer-deployment-patch.yaml
 # Plugin d'audit Hermes (SQLite) + exporter Prometheus (dashboard monitoring/grafana-dashboard-enyo)
@@ -25,3 +26,7 @@ configMapGenerator:
     namespace: hermes
     files:
       - audit-exporter/exporter.py
+  - name: hermes-nous-proxy
+    namespace: hermes
+    files:
+      - nous-proxy/nous_proxy.py
