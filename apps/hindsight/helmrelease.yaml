@@ -1,0 +1,78 @@
+# Hindsight (vectorize-io) : mémoire long terme d'Ényo (banque `enyo`).
+# Image complète : embeddings + reranker locaux, seul le LLM d'extraction est externe
+# (Mistral, même clé que le Hindsight du Mac). Auth par clé API (tenant extension).
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: hindsight
+  namespace: hindsight
+spec:
+  type: oci
+  interval: 24h
+  url: oci://ghcr.io/vectorize-io/charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: hindsight
+  namespace: hindsight
+spec:
+  interval: 30m
+  timeout: 15m
+  chart:
+    spec:
+      chart: hindsight
+      version: 1.2.1
+      sourceRef: {kind: HelmRepository, name: hindsight}
+  install:
+    remediation: {retries: 3}
+  upgrade:
+    remediation: {retries: 3}
+  # Le chart ne pose pas de nodeSelector sur Postgres : on l'épingle sur node3
+  # (node1/cloud4dev n'ont que 3,7 Go).
+  postRenderers:
+    - kustomize:
+        patches:
+          - target: {kind: StatefulSet}
+            patch: |
+              - op: add
+                path: /spec/template/spec/nodeSelector
+                value: {kubernetes.io/hostname: node3}
+  valuesFrom:
+    - kind: Secret
+      name: hindsight-values
+      valuesKey: pg-password
+      targetPath: postgresql.auth.password
+  values:
+    version: "1.2.1"
+    existingSecret: hindsight-secrets
+    nodeSelector: {kubernetes.io/hostname: node3}
+    api:
+      strategy: {type: Recreate}
+      automountServiceAccountToken: false
+      startupProbe:
+        httpGet: {path: /health/live, port: 8888}
+        periodSeconds: 10
+        failureThreshold: 60
+      resources:
+        requests: {cpu: 200m, memory: 768Mi}
+        limits: {cpu: "2", memory: 2560Mi}
+      persistence:
+        modelCache: {enabled: true, size: 3Gi}
+      env:
+        HINDSIGHT_API_LLM_PROVIDER: openai
+        HINDSIGHT_API_LLM_BASE_URL: https://api.mistral.ai/v1
+        HINDSIGHT_API_LLM_MODEL: mistral-small-latest
+        HINDSIGHT_API_TENANT_EXTENSION: hindsight_api.extensions.builtin.tenant:ApiKeyTenantExtension
+        HINDSIGHT_API_RETAIN_MAX_COMPLETION_TOKENS: "8000"
+        HINDSIGHT_API_CONSOLIDATION_MAX_COMPLETION_TOKENS: "8000"
+        HINDSIGHT_API_REFLECT_MAX_COMPLETION_TOKENS: "8000"
+    controlPlane:
+      enabled: false
+    postgresql:
+      enabled: true
+      image: {repository: pgvector/pgvector, tag: pg17}
+      persistence: {enabled: true, size: 5Gi}
+      resources:
+        requests: {cpu: 50m, memory: 128Mi}
+        limits: {cpu: "1", memory: 768Mi}
